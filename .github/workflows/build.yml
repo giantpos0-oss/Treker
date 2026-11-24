@@ -1,0 +1,86 @@
+name: Build APK
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # Every version must have release notes, so the guide and notes never fall behind the app.
+      - name: Check the release notes cover this version
+        run: |
+          ver=$(grep -m1 'versionName' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
+          if ! grep -q "^## Version $ver\b" docs/release-notes.md; then
+            echo "::error title=Release notes missing::docs/release-notes.md has no '## Version $ver' heading. Add notes for $ver, and update docs/user-guide.md for any change people will notice."
+            exit 1
+          fi
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Set up the signing key
+        env:
+          SIGNING: ${{ secrets.TREKER_SIGNING }}
+        run: |
+          if [ -n "$SIGNING" ]; then
+            pw="${SIGNING%%:*}"
+            echo "::add-mask::$pw"
+            printf '%s' "${SIGNING#*:}" | base64 -d > "$RUNNER_TEMP/treker.p12"
+            echo "TREKER_KEYSTORE=$RUNNER_TEMP/treker.p12" >> "$GITHUB_ENV"
+            echo "TREKER_KEY_PASSWORD=$pw" >> "$GITHUB_ENV"
+          else
+            echo "::warning::No TREKER_SIGNING secret: release build uses a temporary debug key"
+          fi
+      - name: Build debug and release APKs
+        env:
+          TREKER_GOOGLE_KEY: ${{ secrets.TREKER_GOOGLE_KEY }}
+        run: |
+          chmod +x gradlew
+          set -o pipefail
+          ./gradlew --no-daemon --continue assembleDebug assembleRelease 2>&1 | tee build.log
+      # Turn compiler errors into annotations, which can be read without opening the logs.
+      - name: Report build errors
+        if: failure()
+        run: |
+          grep -E "^e: |error:|What went wrong|Could not|Unresolved|> " build.log | grep -v "^> Task" | head -150 > errors.txt || true
+          split -l 12 errors.txt chunk_ || true
+          for f in chunk_*; do
+            [ -s "$f" ] || continue
+            msg=$(sed -e 's/%/%25/g' "$f" | sed -e ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=Build error ($f)::$msg"
+          done
+      - name: Report which key signed the release
+        run: |
+          apk=$(ls app/build/outputs/apk/release/*.apk | head -1)
+          signer=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner
+          cert=$("$signer" verify --print-certs "$apk" | grep -m1 "SHA-256" | sed 's/.*: //')
+          sha1=$("$signer" verify --print-certs "$apk" | grep -m1 "SHA-1" | sed 's/.*: //')
+          echo "::notice title=Release signing certificate::SHA-256 $cert"
+          echo "::notice title=SHA-1 for the Google key restriction::$sha1"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Treker-apks
+          path: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk
+      # Publish the signed APK as a public download (no GitHub sign-in needed):
+      # https://github.com/<owner>/<repo>/releases/latest/download/Treker.apk
+      - name: Publish download
+        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ver=$(grep -m1 'versionName' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
+          cp "$(ls app/build/outputs/apk/release/*.apk | head -1)" Treker.apk
+          if gh release view "v$ver" >/dev/null 2>&1; then
+            gh release upload "v$ver" Treker.apk --clobber
+          else
+            gh release create "v$ver" Treker.apk --title "Treker $ver" --notes "Install Treker.apk on your Android phone. What is new: https://github.com/${{ github.repository }}/blob/main/docs/release-notes.md" --latest
+          fi

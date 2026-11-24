@@ -1,0 +1,82 @@
+package com.willwalsh.treker.ui
+
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.willwalsh.treker.LiveItem
+import com.willwalsh.treker.TrekerApp
+import com.willwalsh.treker.data.GoogleKeyMissing
+import com.willwalsh.treker.data.Place
+import kotlinx.coroutines.launch
+
+@Composable
+fun ExploreScreen() {
+    val app = LocalContext.current.applicationContext as TrekerApp
+    val s = app.settings
+    val view = LocalView.current
+    val scope = rememberCoroutineScope()
+    var places by remember { mutableStateOf<List<Pair<Place, Double>>?>(null) }
+    var placesNote by remember { mutableStateOf("") }
+
+    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
+        // What's Around is the very first thing on the screen.
+        SwitchRow("What's Around", app.whatsAround.running.value) { on ->
+            s.whatsAround = on
+            if (on) app.whatsAround.start() else app.whatsAround.stop()
+        }
+        val pointing = app.whatsAround.pointingAt.value
+        if (pointing.isNotBlank()) Text(pointing, fontSize = 18.sp, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
+
+        SwitchRow("Live exploration", s.liveExploration) { on ->
+            s.liveExploration = on
+            app.speaker.say(if (on) "Live exploration on." else "Live exploration paused.", true)
+        }
+        Text(app.explorer.status.value, fontSize = 16.sp, modifier = Modifier.padding(vertical = 4.dp))
+
+        BigButton("Where am I") { app.speaker.say(app.explorer.whereAmI(), true) }
+        BigButton("Nearest intersection") { scope.launch { app.speaker.say(app.explorer.nearestIntersection(), true) } }
+        BigButton("Places nearby") {
+            scope.launch {
+                try {
+                    val list = app.explorer.nearbyPlaces()
+                    places = list
+                    placesNote = if (list.isEmpty()) "No places found nearby." else "${list.size} places nearby, nearest first."
+                } catch (e: GoogleKeyMissing) { places = emptyList(); placesNote = e.message.orEmpty() }
+                catch (e: Exception) { places = emptyList(); placesNote = e.message ?: "Couldn't get places." }
+                app.speaker.say(placesNote, true)
+            }
+        }
+        places?.let { list ->
+            Heading("Places nearby")
+            Text(placesNote, fontSize = 16.sp)
+            list.forEach { (p, d) -> PlaceRow(p, d, app) }
+        }
+
+        Heading("Announce while moving")
+        for (item in LiveItem.entries) {
+            SwitchRow(item.label, s.isOn(item)) { s.set(item, it) }
+        }
+
+        Heading("Recent announcements")
+        val history = app.explorer.history
+        if (history.isEmpty()) Text("Nothing announced yet.", fontSize = 16.sp)
+        history.take(15).forEach { Text(it, fontSize = 16.sp, modifier = Modifier.padding(vertical = 4.dp)) }
+    }
+}

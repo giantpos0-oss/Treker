@@ -1,0 +1,194 @@
+package com.willwalsh.treker.explore
+
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import com.willwalsh.treker.DirectionStyle
+import com.willwalsh.treker.LiveItem
+import com.willwalsh.treker.TrekerApp
+import com.willwalsh.treker.data.AddressLookup
+import com.willwalsh.treker.data.AreaInfo
+import com.willwalsh.treker.data.Geo
+import com.willwalsh.treker.data.GoogleKeyMissing
+import com.willwalsh.treker.data.GooglePlaces
+import com.willwalsh.treker.data.LatLon
+import com.willwalsh.treker.data.Place
+import com.willwalsh.treker.data.StreetMap
+import com.willwalsh.treker.location.Fix
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+
+/**
+ * Live exploration: as you move, announces the things you've switched on — country, state, city,
+ * zip code, street, intersections you're approaching, places you pass and your direction.
+ */
+class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope) {
+    private val settings get() = app.settings
+
+    /** What Treker last said, newest first, shown on the Explore tab. */
+    val history = mutableStateListOf<String>()
+    /** Where you are, for the "Where am I" button. */
+    val area = mutableStateOf<AreaInfo?>(null)
+    val street = mutableStateOf<String?>(null)
+    val status = mutableStateOf("Waiting for GPS")
+
+    private var lastLookupAt: LatLon? = null
+    private var lastLookupTime = 0L
+    private var lookupJob: Job? = null
+    private var announcedArea: AreaInfo? = null
+    private var pendingStreet: String? = null
+    private var pendingStreetCount = 0
+    private val announcedIntersections = HashMap<Long, Long>()
+    private val announcedPlaces = HashMap<String, Long>()
+    private var lastHeadingSaid: Double? = null
+    private var streetJob: Job? = null
+    private var placesJob: Job? = null
+    private var lastPlacesAt: LatLon? = null
+    private var placesKeyWarned = false
+
+    fun onFix(fix: Fix) {
+        status.value = if (fix.accuracy > 40) "GPS is weak, accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.metric)}"
+        else "GPS ready"
+        if (!settings.liveExploration) return
+        checkArea(fix)
+        checkStreets(fix)
+        checkHeading(fix)
+        checkPlaces(fix)
+    }
+
+    private fun say(text: String) {
+        history.add(0, text)
+        while (history.size > 50) history.removeAt(history.size - 1)
+        app.speaker.say(text)
+    }
+
+    // Country, state, county, city, neighborhood, zip and address, from the phone's free address lookup.
+    private fun checkArea(fix: Fix) {
+        val now = System.currentTimeMillis()
+        val moved = lastLookupAt?.let { Geo.distance(it, fix.pos) } ?: Double.MAX_VALUE
+        if (lookupJob?.isActive == true) return
+        if (moved < 30 && now - lastLookupTime < 120_000) return
+        if (now - lastLookupTime < 4_000) return
+        lastLookupAt = fix.pos; lastLookupTime = now
+        lookupJob = scope.launch {
+            val info = runCatching { AddressLookup.at(app, fix.pos) }.getOrNull() ?: return@launch
+            area.value = info
+            val old = announcedArea
+            announcedArea = info
+            val parts = ArrayList<String>()
+            fun changed(item: LiveItem, new: String?, prev: String?) {
+                if (settings.isOn(item) && !new.isNullOrBlank() && new != prev) parts.add(new)
+            }
+            changed(LiveItem.COUNTRY, info.country, old?.country)
+            changed(LiveItem.STATE, info.state, old?.state)
+            changed(LiveItem.COUNTY, info.county, old?.county)
+            changed(LiveItem.CITY, info.city, old?.city)
+            changed(LiveItem.NEIGHBORHOOD, info.neighborhood, old?.neighborhood)
+            if (settings.isOn(LiveItem.ZIP) && !info.zip.isNullOrBlank() && info.zip != old?.zip) parts.add("zip code ${spellZip(info.zip)}")
+            if (settings.isOn(LiveItem.ADDRESS) && !info.address.isNullOrBlank() && info.address != old?.address) parts.add("near ${info.address}")
+            if (parts.isNotEmpty()) say(parts.joinToString(", "))
+            if (street.value == null && !info.street.isNullOrBlank()) street.value = info.street
+        }
+    }
+
+    private fun spellZip(z: String) = z.toCharArray().joinToString(" ")
+
+    // Street names and intersections, from OpenStreetMap.
+    private fun checkStreets(fix: Fix) {
+        if (streetJob?.isActive == true) return
+        if (!settings.isOn(LiveItem.STREET) && !settings.isOn(LiveItem.INTERSECTIONS)) return
+        streetJob = scope.launch {
+            val map = StreetMap.around(fix.pos) ?: return@launch
+            if (settings.isOn(LiveItem.STREET)) {
+                val near = map.nearestStreet(fix.pos)
+                val name = near?.takeIf { it.second < 25 }?.first?.name
+                if (name != null && name != street.value) {
+                    // Only announce a new street once it's confirmed twice, so crossing a street isn't "now on".
+                    if (name == pendingStreet) pendingStreetCount++ else { pendingStreet = name; pendingStreetCount = 1 }
+                    if (pendingStreetCount >= 2) { street.value = name; say("On $name") }
+                }
+            }
+            if (settings.isOn(LiveItem.INTERSECTIONS)) {
+                val course = fix.course ?: return@launch
+                val now = System.currentTimeMillis()
+                val ahead = map.intersections
+                    .map { it to Geo.distance(fix.pos, it.pos) }
+                    .filter { (i, d) -> d in 8.0..45.0 && Math.abs(Geo.angleDiff(course, Geo.bearing(fix.pos, i.pos))) < 40 }
+                    .minByOrNull { it.second }
+                if (ahead != null && now - (announcedIntersections[ahead.first.node] ?: 0L) > 180_000) {
+                    announcedIntersections[ahead.first.node] = now
+                    say("Approaching ${ahead.first.spoken()}, ${Geo.distanceWords(ahead.second, settings.metric)}")
+                }
+            }
+        }
+    }
+
+    private fun checkHeading(fix: Fix) {
+        if (!settings.isOn(LiveItem.HEADING)) return
+        val c = fix.course ?: return
+        val last = lastHeadingSaid
+        if (last == null || Math.abs(Geo.angleDiff(last, c)) > 50) {
+            lastHeadingSaid = c
+            say("Heading ${Geo.compassWord(c)}")
+        }
+    }
+
+    // Places you pass: businesses and landmarks close by, from Google (cached by area).
+    private fun checkPlaces(fix: Fix) {
+        if (!settings.isOn(LiveItem.PLACES) || placesJob?.isActive == true) return
+        val last = lastPlacesAt
+        if (last != null && Geo.distance(last, fix.pos) < 10) return
+        lastPlacesAt = fix.pos
+        placesJob = scope.launch {
+            val places = try { GooglePlaces.nearby(fix.pos, maxOf(settings.placesRadius.toDouble(), 300.0)) }
+            catch (e: GoogleKeyMissing) { return@launch } catch (e: Exception) { return@launch }
+            val now = System.currentTimeMillis()
+            val close = places.map { it to Geo.distance(fix.pos, it.pos) }.filter { it.second < 35 }.sortedBy { it.second }
+            for ((p, d) in close.take(2)) {
+                val key = p.placeId ?: p.name
+                if (now - (announcedPlaces[key] ?: 0L) < 15 * 60_000) continue
+                announcedPlaces[key] = now
+                say("${p.name}, ${direction(fix, p.pos)}, ${Geo.distanceWords(d, settings.metric)}")
+            }
+        }
+    }
+
+    /** Direction to [target] in the chosen style. Clock directions need a direction of travel or the compass. */
+    fun direction(fix: Fix?, target: LatLon, facing: Double? = null): String {
+        val from = fix?.pos ?: return ""
+        val b = Geo.bearing(from, target)
+        val heading = facing ?: fix.course ?: app.compass.heading.value
+        return if (settings.directionStyle == DirectionStyle.CLOCK && heading != null) Geo.clockWord(heading, b)
+        else Geo.compassWord(b)
+    }
+
+    /** "Where am I": everything known about this spot, regardless of the on/off settings. */
+    fun whereAmI(): String {
+        val fix = app.location.fix.value ?: return "No GPS position yet."
+        val a = area.value
+        val parts = ArrayList<String>()
+        street.value?.let { parts.add("On $it") }
+        a?.address?.let { parts.add("near $it") }
+        listOfNotNull(a?.neighborhood, a?.city, a?.county, a?.state).forEach { parts.add(it) }
+        a?.zip?.let { parts.add("zip code ${spellZip(it)}") }
+        a?.country?.let { parts.add(it) }
+        fix.course?.let { parts.add("heading ${Geo.compassWord(it)}") }
+        if (fix.accuracy > 25) parts.add("GPS accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.metric)}")
+        return if (parts.isEmpty()) "Looking up where you are." else parts.joinToString(", ") + "."
+    }
+
+    /** The nearest intersection, for the "Nearest intersection" button. */
+    suspend fun nearestIntersection(): String {
+        val fix = app.location.fix.value ?: return "No GPS position yet."
+        val map = StreetMap.around(fix.pos) ?: return "Couldn't get street information. Check your internet connection."
+        val i = map.intersections.minByOrNull { Geo.distance(fix.pos, it.pos) } ?: return "No intersections nearby."
+        return "${i.spoken()}, ${direction(fix, i.pos)}, ${Geo.distanceWords(Geo.distance(fix.pos, i.pos), settings.metric)}"
+    }
+
+    /** Places around you, nearest first, for the list on the Explore tab. */
+    suspend fun nearbyPlaces(): List<Pair<Place, Double>> {
+        val fix = app.location.fix.value ?: return emptyList()
+        return GooglePlaces.nearby(fix.pos, settings.placesRadius.toDouble().coerceAtLeast(100.0))
+            .map { it to Geo.distance(fix.pos, it.pos) }.sortedBy { it.second }
+    }
+}
