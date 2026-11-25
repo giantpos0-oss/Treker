@@ -76,6 +76,11 @@ fun RoutesScreen() {
             if (g.active.value) {
                 BigButton("Repeat instruction") { g.repeat() }
                 BigButton("Stop guidance") { g.stop() }
+                BigButton("Report a route problem") {
+                    app.location.fix.value?.pos?.let {
+                        AppNav.report.value = ReportRequest(it, heard = g.current.value, problem = com.willwalsh.treker.data.Problem.ROUTE)
+                    }
+                }
                 if (g.steps.isNotEmpty()) {
                     Heading("Steps")
                     g.steps.forEachIndexed { i, s -> Text("${i + 1}. $s", fontSize = 17.sp, modifier = Modifier.padding(vertical = 4.dp)) }

@@ -46,29 +46,36 @@ object Offline {
     fun hasMapFor(p: LatLon) = regionFor(p) != null
 
     suspend fun streets(p: LatLon, radius: Double): StreetArea? = withContext(Dispatchers.IO) {
-        regionFor(p)?.let { runCatching { it.streetArea(p, radius) }.getOrNull() }
+        val area = regionFor(p)?.let { runCatching { it.streetArea(p, radius) }.getOrNull() } ?: return@withContext null
+        if (Corrections.items.none { it.type == MapCorrection.Type.RENAME_STREET }) return@withContext area
+        // Street names you corrected on your phone take effect straight away.
+        StreetArea(area.center, area.radius, area.ways.map { w ->
+            val at = w.nodes.firstNotNullOfOrNull { area.nodes[it] } ?: p
+            w.copy(name = Corrections.streetName(w.name, at))
+        }, area.nodes)
     }
 
     suspend fun pois(p: LatLon, radius: Double): List<Place> = withContext(Dispatchers.IO) {
         val r = regionFor(p) ?: throw NoMapForHere()
-        r.pois(p, radius)
+        Corrections.applyToPlaces(r.pois(p, radius), p, radius)
     }
 
     suspend fun search(query: String, near: LatLon?): List<Place> = withContext(Dispatchers.IO) {
         val list = (near?.let { regionFor(it) }?.let { listOf(it) } ?: installed)
         if (list.isEmpty()) throw NoMapForHere()
-        list.flatMap { runCatching { it.search(query, near) }.getOrDefault(emptyList()) }
+        val found = list.flatMap { runCatching { it.search(query, near) }.getOrDefault(emptyList()) } + Corrections.searchAdded(query)
+        Corrections.applyToPlaces(found, null, 0.0)
             .let { all -> if (near != null) all.sortedBy { Geo.distance(near, it.pos) } else all }
             .take(50)
     }
 
     /** Where [p] is, from boundaries, the nearest address and the nearest street. */
-    suspend fun areaInfo(p: LatLon, streetsHere: StreetArea? = null): AreaInfo? = withContext(Dispatchers.IO) {
+    suspend fun areaInfo(p: LatLon, streetsHere: StreetArea? = null, course: Double? = null): AreaInfo? = withContext(Dispatchers.IO) {
         val r = regionFor(p) ?: return@withContext null
         val areas = runCatching { r.areasAt(p) }.getOrDefault(emptyMap())
-        val addr = runCatching { r.nearestAddress(p) }.getOrNull()
         val street = (streetsHere ?: runCatching { r.streetArea(p, 150.0) }.getOrNull())
-            ?.nearestStreet(p)?.takeIf { it.second < 40 }?.first?.name
+            ?.nearestStreet(p, course)?.takeIf { it.second < 30 }?.first?.name
+        val addr = runCatching { r.nearestAddress(p, street = street) }.getOrNull()
         AreaInfo(
             country = areas["country"],
             state = areas["state"],

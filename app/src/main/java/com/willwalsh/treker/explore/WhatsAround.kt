@@ -46,7 +46,7 @@ class WhatsAround(private val app: TrekerApp, private val scope: CoroutineScope)
                     } catch (e: Exception) {
                         app.speaker.say(e.message ?: "No offline map here.")
                     }
-                    StreetMap.around(fix.pos)?.intersections?.forEach { list.add(Target("i${it.node}", it.spoken(), it.pos)) }
+                    StreetMap.around(fix.pos)?.clusters?.forEach { list.add(Target("i${it.node}", it.spoken(), it.pos)) }
                     targets = list
                 }
                 if (fix != null && heading != null) {

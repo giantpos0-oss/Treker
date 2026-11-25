@@ -24,7 +24,7 @@ import sys
 
 import numpy as np
 import osmium
-from shapely.geometry import MultiPolygon, Polygon
+from shapely.geometry import MultiPolygon, Polygon, box, shape
 
 CELL = 0.01  # degrees, about 1.1 km north-south
 
@@ -159,7 +159,7 @@ class Pass2(osmium.SimpleHandler):
             c.executemany("INSERT INTO street_cells VALUES (?,?)", self.street_cells)
             self.streets.clear(); self.street_cells.clear()
         if force or len(self.pois) > 20000:
-            c.executemany("INSERT INTO pois VALUES (?,?,?,?,?,?,?)", self.pois)
+            c.executemany("INSERT INTO pois VALUES (?,?,?,?,?,?,?,?)", self.pois)
             self.pois.clear()
         if force or len(self.addresses) > 20000:
             c.executemany("INSERT INTO addresses VALUES (?,?,?,?,?,?,?)", self.addresses)
@@ -169,7 +169,7 @@ class Pass2(osmium.SimpleHandler):
         b = self.bbox
         b[0] = min(b[0], lat); b[1] = min(b[1], lon); b[2] = max(b[2], lat); b[3] = max(b[3], lon)
 
-    def add_poi_or_address(self, tags, lat, lon):
+    def add_poi_or_address(self, tags, lat, lon, osm=""):
         name = tags.get("name")
         if name:
             kind = poi_kind(tags)
@@ -177,7 +177,7 @@ class Pass2(osmium.SimpleHandler):
                 street = tags.get("addr:street", "")
                 num = tags.get("addr:housenumber", "")
                 addr = f"{num} {street}".strip()
-                self.pois.append((self.next_poi, name, kind, lat, lon, cell_of(lat, lon), addr))
+                self.pois.append((self.next_poi, name, kind, lat, lon, cell_of(lat, lon), addr, osm))
                 self.next_poi += 1
         num = tags.get("addr:housenumber")
         street = tags.get("addr:street")
@@ -200,7 +200,7 @@ class Pass2(osmium.SimpleHandler):
         place = tags.get("place")
         if place in ("neighbourhood", "suburb", "quarter") and tags.get("name"):
             self.place_nodes.append(("neighborhood", tags.get("name"), lat, lon))
-        self.add_poi_or_address(tags, lat, lon)
+        self.add_poi_or_address(tags, lat, lon, f"node/{n.id}")
 
     def way(self, w):
         name = street_name(w.tags)
@@ -247,11 +247,13 @@ class Pass2(osmium.SimpleHandler):
         if name and poi_kind(tags) or (tags.get("addr:housenumber") and tags.get("addr:street")):
             try:
                 ring = next(iter(a.outer_rings()))
-                lats = [n.lat for n in ring]; lons = [n.lon for n in ring]
+                pts = list(ring)[:-1] or list(ring)
+                lats = [n.lat for n in pts]; lons = [n.lon for n in pts]
             except (StopIteration, osmium.InvalidLocationError):
                 return
             if lats:
-                self.add_poi_or_address(tags, sum(lats) / len(lats), sum(lons) / len(lons))
+                osm = f"way/{a.orig_id()}" if a.from_way() else f"relation/{a.orig_id()}"
+                self.add_poi_or_address(tags, sum(lats) / len(lats), sum(lons) / len(lons), osm)
 
     def add_area(self, level, name, a):
         polys = []
@@ -290,12 +292,46 @@ def pack_rings(geom):
     return bytes(out)
 
 
+def zcta_areas(path, bbox):
+    """Zip code tabulation areas from the Census Bureau that overlap this region."""
+    import shapefile  # pyshp
+    region = box(bbox[1], bbox[0], bbox[3], bbox[2])
+    reader = shapefile.Reader(path)
+    fields = [f[0] for f in reader.fields[1:]]
+    key = next(f for f in fields if f.upper().startswith("ZCTA5CE"))
+    n = 0
+    for sr in reader.iterShapeRecords():
+        x0, y0, x1, y1 = sr.shape.bbox
+        if x1 < bbox[1] or x0 > bbox[3] or y1 < bbox[0] or y0 > bbox[2]:
+            continue
+        geom = shape(sr.shape.__geo_interface__)
+        if not geom.intersects(region):
+            continue
+        # About 5 m accuracy: zip edges often run down the middle of a street.
+        geom = geom.simplify(0.00005, preserve_topology=True)
+        n += 1
+        yield ("zip", sr.record[fields.index(key)], geom)
+    print(f"  {n} zip code areas", file=sys.stderr)
+
+
+def check(db):
+    """Stops the build if the map is clearly broken, so a bad map never reaches anyone's phone."""
+    q = lambda sql: db.execute(sql).fetchone()[0]
+    problems = []
+    if q("SELECT COUNT(*) FROM streets") < 100: problems.append("almost no streets")
+    if q("SELECT COUNT(*) FROM junctions") < 50: problems.append("almost no intersections")
+    if q("SELECT COUNT(*) FROM areas WHERE level = 'state'") < 1: problems.append("no state boundary")
+    if q("SELECT COUNT(*) FROM areas WHERE level = 'city'") < 1: problems.append("no city boundaries")
+    if q("SELECT COUNT(*) FROM pois") < 50: problems.append("almost no places")
+    return problems
+
+
 SCHEMA = """
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE streets (id INTEGER PRIMARY KEY, name TEXT, kind TEXT, geom BLOB);
 CREATE TABLE street_cells (cell INTEGER, street INTEGER);
 CREATE TABLE junctions (id INTEGER PRIMARY KEY, lat REAL, lon REAL, names TEXT, cell INTEGER);
-CREATE TABLE pois (id INTEGER PRIMARY KEY, name TEXT, kind TEXT, lat REAL, lon REAL, cell INTEGER, address TEXT);
+CREATE TABLE pois (id INTEGER PRIMARY KEY, name TEXT, kind TEXT, lat REAL, lon REAL, cell INTEGER, address TEXT, osm TEXT);
 CREATE TABLE addresses (number TEXT, street TEXT, city TEXT, postcode TEXT, lat REAL, lon REAL, cell INTEGER);
 CREATE TABLE areas (id INTEGER PRIMARY KEY, level TEXT, name TEXT,
     minlat REAL, minlon REAL, maxlat REAL, maxlon REAL, geom BLOB);
@@ -319,6 +355,7 @@ def main():
     ap.add_argument("out")
     ap.add_argument("--id", required=True)
     ap.add_argument("--name", required=True)
+    ap.add_argument("--zcta", help="Census ZCTA shapefile (.shp or .zip) for exact zip code areas")
     args = ap.parse_args()
 
     print("Pass 1: finding junctions", file=sys.stderr)
@@ -350,6 +387,10 @@ def main():
         from shapely.geometry import Point
         p2.areas.append((level, name, Point(lon, lat).buffer(0.004, quad_segs=4)))
 
+    if args.zcta:
+        b = p2.bbox
+        p2.areas = [a for a in p2.areas if a[0] != "zip"] + list(zcta_areas(args.zcta, b))
+
     arows = []
     for i, (level, name, geom) in enumerate(p2.areas):
         minx, miny, maxx, maxy = geom.bounds
@@ -365,6 +406,10 @@ def main():
     db.executemany("INSERT INTO meta VALUES (?,?)", [(k, str(v)) for k, v in meta.items()])
     db.executescript(INDEXES)
     db.commit()
+    if not args.id.startswith("test"):
+        problems = check(db)
+        if problems:
+            raise SystemExit("Map check failed: " + ", ".join(problems))
     db.execute("VACUUM")
     db.close()
     counts = {t: sqlite3.connect(args.out).execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]

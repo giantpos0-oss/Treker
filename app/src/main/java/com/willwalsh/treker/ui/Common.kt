@@ -85,6 +85,9 @@ fun placeActions(app: TrekerApp, activity: Activity?, place: Place, inFavorites:
         AppNav.tab.value = Tab.BROWSE
         AppNav.browseFrom.value = place
     })
+    list.add("Report a problem with this place" to {
+        AppNav.report.value = ReportRequest(place.pos, place = place)
+    })
     if (inFavorites || app.favorites.contains(place)) {
         list.add("Remove from favorites" to { app.favorites.remove(place); app.speaker.say("Removed ${place.name} from favorites.", true) })
     } else {

@@ -83,10 +83,26 @@ jobs:
           curl -fL --retry 5 --retry-delay 20 -o work/region.osm.pbf "https://download.geofabrik.de/${{ matrix.region.path }}-latest.osm.pbf"
           ls -la work
 
+      # Exact zip code areas from the U.S. Census Bureau (public domain), downloaded once and cached.
+      - name: Zip code areas cache
+        uses: actions/cache@v4
+        with:
+          path: zcta
+          key: zcta-tl_2025_us_zcta520
+
+      - name: Download zip code areas
+        run: |
+          if [ ! -f zcta/tl_2025_us_zcta520.shp ]; then
+            mkdir -p zcta
+            curl -fL --retry 5 --retry-delay 30 -o zcta/z.zip https://www2.census.gov/geo/tiger/TIGER2025/ZCTA520/tl_2025_us_zcta520.zip
+            unzip -o -q zcta/z.zip -d zcta && rm zcta/z.zip
+          fi
+          ls -la zcta
+
       - name: Build street database
         run: |
-          pip install osmium shapely numpy
-          python3 tools/build_region.py work/region.osm.pbf "work/$ID.db" --id "$ID" --name "$NAME"
+          pip install osmium shapely numpy pyshp
+          python3 tools/build_region.py work/region.osm.pbf "work/$ID.db" --id "$ID" --name "$NAME" --zcta zcta/tl_2025_us_zcta520.shp
           gzip -6 -c "work/$ID.db" > "work/$ID.db.gz"
 
       - name: Build routing tiles with Valhalla

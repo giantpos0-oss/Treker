@@ -88,6 +88,8 @@ class VirtualWalker(private val app: TrekerApp) {
         val a = area ?: return null
         val w = way ?: return null
         var i = index; var dist = 0.0
+        // The intersection you're standing at, so the other half of a divided road isn't a "next" one.
+        val here = a.clusterOf(w.nodes[index])
         while (true) {
             val ni = i + dir
             if (ni !in w.nodes.indices) return if (i == index) null else Triple(w.nodes[i], i, dist)
@@ -95,7 +97,7 @@ class VirtualWalker(private val app: TrekerApp) {
             if (p1 != null && p2 != null) dist += Geo.distance(p1, p2)
             i = ni
             val n = w.nodes[i]
-            if (a.intersectionAt(n) != null) return Triple(n, i, dist)
+            if (a.intersectionAt(n) != null && (here == null || a.clusterOf(n) != here)) return Triple(n, i, dist)
             // Where this street continues as another way with the same name, keep going on it.
             if (i == 0 || i == w.nodes.size - 1) {
                 val cont = a.waysAt[n].orEmpty().firstOrNull { it.id != w.id && it.name == w.name }
@@ -107,7 +109,7 @@ class VirtualWalker(private val app: TrekerApp) {
     private fun lookAhead(): String {
         val a = area ?: return ""
         val ahead = walkAhead() ?: return "Dead end ahead."
-        val i = a.intersectionAt(ahead.first)
+        val i = a.clusterIntersection(ahead.first)
         val what = i?.spoken() ?: "end of ${way?.name}"
         return "Next: $what, ${Geo.distanceWords(ahead.third, metric)}."
     }
@@ -128,7 +130,7 @@ class VirtualWalker(private val app: TrekerApp) {
             }
         }
         maybeReload()
-        val inter = a.intersectionAt(n)
+        val inter = a.clusterIntersection(n)
         val here = inter?.spoken() ?: "End of ${w.name}"
         say("$here. Moved ${Geo.distanceWords(dist, metric)} ${Geo.compassWord(heading())}. ${lookAhead()}")
     }
@@ -154,7 +156,7 @@ class VirtualWalker(private val app: TrekerApp) {
     fun describe() {
         val w = way ?: return say("Map browsing hasn't started.")
         val n = node
-        val inter = n?.let { area?.intersectionAt(it) }
+        val inter = n?.let { area?.clusterIntersection(it) }
         say(buildString {
             if (inter != null) append("At ${inter.spoken()}. ")
             append("Facing ${Geo.compassWord(heading())} on ${w.name}. ")

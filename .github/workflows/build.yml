@@ -42,7 +42,7 @@ jobs:
         run: |
           chmod +x gradlew
           set -o pipefail
-          ./gradlew --no-daemon --continue assembleDebug assembleRelease 2>&1 | tee build.log
+          ./gradlew --no-daemon --continue testDebugUnitTest assembleDebug assembleRelease 2>&1 | tee build.log
       # Turn compiler errors into annotations, which can be read without opening the logs.
       - name: Report build errors
         if: failure()

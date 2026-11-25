@@ -35,6 +35,7 @@ import com.willwalsh.treker.ui.BigButton
 import com.willwalsh.treker.ui.BrowseScreen
 import com.willwalsh.treker.ui.ExploreScreen
 import com.willwalsh.treker.ui.FavoritesScreen
+import com.willwalsh.treker.ui.ReportDialog
 import com.willwalsh.treker.ui.HelpSettingsScreen
 import com.willwalsh.treker.ui.RoutesScreen
 import com.willwalsh.treker.ui.Tab
@@ -115,6 +116,7 @@ private fun AppRoot() {
         },
     ) { padding ->
         Box(Modifier.fillMaxSize().padding(padding)) {
+            AppNav.report.value?.let { req -> ReportDialog(req) { AppNav.report.value = null } }
             when (tab) {
                 Tab.EXPLORE -> ExploreScreen()
                 Tab.BROWSE -> BrowseScreen()

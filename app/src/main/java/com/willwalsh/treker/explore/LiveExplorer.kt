@@ -21,6 +21,11 @@ import kotlinx.coroutines.launch
  * zip code, street, intersections you're approaching, places you pass and your direction.
  */
 class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope) {
+    companion object {
+        /** Beyond this GPS error, in meters, street, intersection, address and place announcements wait. */
+        const val MAX_ACCURACY = 25f
+    }
+
     private val settings get() = app.settings
 
     /** What Treker last said, newest first, shown on the Explore tab. */
@@ -44,9 +49,16 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
     private var lastPlacesAt: LatLon? = null
     private var noMapWarned = false
 
+    private var gpsWeak = false
+
     fun onFix(fix: Fix) {
-        status.value = if (fix.accuracy > 40) "GPS is weak, accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.metric)}"
-        else "GPS ready"
+        val weak = fix.accuracy > MAX_ACCURACY
+        status.value = if (weak) "GPS is weak, accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.metric)}"
+        else "GPS good, accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.metric)}"
+        if (settings.liveExploration && weak != gpsWeak) {
+            gpsWeak = weak
+            say(if (weak) "GPS signal weak. Street and place announcements paused." else "GPS signal good again.")
+        }
         if (!settings.liveExploration) return
         if (!Offline.hasMapFor(fix.pos)) {
             if (!noMapWarned) {
@@ -77,7 +89,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         if (now - lastLookupTime < 4_000) return
         lastLookupAt = fix.pos; lastLookupTime = now
         lookupJob = scope.launch {
-            val info = runCatching { Offline.areaInfo(fix.pos, StreetMap.around(fix.pos)) }.getOrNull() ?: return@launch
+            val info = runCatching { Offline.areaInfo(fix.pos, StreetMap.around(fix.pos), fix.course) }.getOrNull() ?: return@launch
             area.value = info
             val old = announcedArea
             announcedArea = info
@@ -91,7 +103,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
             changed(LiveItem.CITY, info.city, old?.city)
             changed(LiveItem.NEIGHBORHOOD, info.neighborhood, old?.neighborhood)
             if (settings.isOn(LiveItem.ZIP) && !info.zip.isNullOrBlank() && info.zip != old?.zip) parts.add("zip code ${spellZip(info.zip)}")
-            if (settings.isOn(LiveItem.ADDRESS) && !info.address.isNullOrBlank() && info.address != old?.address) parts.add("near ${info.address}")
+            if (settings.isOn(LiveItem.ADDRESS) && fix.accuracy <= MAX_ACCURACY && !info.address.isNullOrBlank() && info.address != old?.address) parts.add("near ${info.address}")
             if (parts.isNotEmpty()) say(parts.joinToString(", "))
             if (street.value == null && !info.street.isNullOrBlank()) street.value = info.street
         }
@@ -105,9 +117,12 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         if (!settings.isOn(LiveItem.STREET) && !settings.isOn(LiveItem.INTERSECTIONS)) return
         streetJob = scope.launch {
             val map = StreetMap.around(fix.pos) ?: return@launch
+            // With a weak GPS signal, Treker stays quiet about streets and intersections rather
+            // than risk naming the wrong one.
+            if (fix.accuracy > MAX_ACCURACY) return@launch
             if (settings.isOn(LiveItem.STREET)) {
-                val near = map.nearestStreet(fix.pos)
-                val name = near?.takeIf { it.second < 25 }?.first?.name
+                val near = map.nearestStreet(fix.pos, fix.course)
+                val name = near?.takeIf { it.second < 20 + fix.accuracy / 2 }?.first?.name
                 if (name != null && name != street.value) {
                     // Only announce a new street once it's confirmed twice, so crossing a street isn't "now on".
                     if (name == pendingStreet) pendingStreetCount++ else { pendingStreet = name; pendingStreetCount = 1 }
@@ -117,9 +132,9 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
             if (settings.isOn(LiveItem.INTERSECTIONS)) {
                 val course = fix.course ?: return@launch
                 val now = System.currentTimeMillis()
-                val ahead = map.intersections
+                val ahead = map.clusters
                     .map { it to Geo.distance(fix.pos, it.pos) }
-                    .filter { (i, d) -> d in 8.0..45.0 && Math.abs(Geo.angleDiff(course, Geo.bearing(fix.pos, i.pos))) < 40 }
+                    .filter { (i, d) -> d in 8.0..45.0 && Math.abs(Geo.angleDiff(course, Geo.bearing(fix.pos, i.pos))) < 30 }
                     .minByOrNull { it.second }
                 if (ahead != null && now - (announcedIntersections[ahead.first.node] ?: 0L) > 180_000) {
                     announcedIntersections[ahead.first.node] = now
@@ -141,7 +156,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
 
     // Places you pass: businesses and landmarks close by, from the offline map.
     private fun checkPlaces(fix: Fix) {
-        if (!settings.isOn(LiveItem.PLACES) || placesJob?.isActive == true) return
+        if (!settings.isOn(LiveItem.PLACES) || placesJob?.isActive == true || fix.accuracy > MAX_ACCURACY) return
         val last = lastPlacesAt
         if (last != null && Geo.distance(last, fix.pos) < 10) return
         lastPlacesAt = fix.pos
@@ -186,7 +201,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
     suspend fun nearestIntersection(): String {
         val fix = app.location.fix.value ?: return "No GPS position yet."
         val map = StreetMap.around(fix.pos) ?: return "There's no offline map for where you are."
-        val i = map.intersections.minByOrNull { Geo.distance(fix.pos, it.pos) } ?: return "No intersections nearby."
+        val i = map.clusters.minByOrNull { Geo.distance(fix.pos, it.pos) } ?: return "No intersections nearby."
         return "${i.spoken()}, ${direction(fix, i.pos)}, ${Geo.distanceWords(Geo.distance(fix.pos, i.pos), settings.metric)}"
     }
 

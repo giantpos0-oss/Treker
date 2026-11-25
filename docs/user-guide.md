@@ -90,11 +90,50 @@ Public transit guidance needs the internet. It tells you each step: walk to the 
 
 Save my current location saves where you are, named by its street address. Places you add from search results or places nearby also appear here, nearest first, with the same place actions.
 
+# Accuracy
+
+Treker is built so it doesn't tell you something wrong with confidence.
+
+- When the GPS signal is weak, worse than about 25 meters, Treker says GPS signal weak and pauses street, intersection, address and place announcements until the signal is good again. It says GPS signal good again when it's back. The Explore tab always shows how accurate your position is.
+- At a corner, Treker names the street you're walking along, not the cross street that happens to be a little closer.
+- A divided road, with separate lanes each way, is announced as one intersection, not two.
+- Zip codes come from the U.S. Census Bureau's zip code areas, so they're right even where no one has mapped addresses.
+- The nearest street address is taken from the street you're on.
+- Every new version of Treker is checked by automatic tests of distances, directions, which street you're on, intersections, turn announcements and noticing when you leave a route. Every map is checked before it's published, so a broken map never reaches your phone.
+
+The map itself is OpenStreetMap, kept up to date by volunteers, so it can still be wrong or out of date in places. When it is, please report it.
+
+# Reporting a map problem
+
+You can report a problem from wherever you notice it:
+
+- On the Explore tab, Report a map problem reports something about where you are.
+- On any place, the Report a problem with this place action. It's in the screen reader's actions menu, and in the buttons that appear when you double tap the place.
+- In map browsing, the Report a problem here button, or the same action on the map browsing area.
+- During guidance, on the Routes tab, Report a route problem.
+
+Choose what's wrong from the list, for example a place is missing, a street name is wrong, or a sidewalk or crossing is missing. If you're correcting a name, type the correct name. You can add more detail if you want. Then choose Send report.
+
+Your report becomes a public note on OpenStreetMap at that spot, including what Treker said there, so local volunteer mappers can see exactly what's wrong and fix it. It doesn't include your name. Once it's fixed, the fix reaches Treker with the next monthly map update. If you're offline, or OpenStreetMap doesn't accept the report right away, Treker keeps it and sends it later.
+
+# Fixing it on your phone straight away
+
+For some problems you don't have to wait. When you report one of these, Treker offers to fix it on your phone straight away, and that's switched on unless you switch it off:
+
+- A place that's closed or gone: Treker stops announcing it.
+- A place with the wrong name: Treker uses the name you typed.
+- A missing place: Treker adds it where you're standing, with the name you typed, and announces it like any other place.
+- A street with the wrong name: Treker uses the name you typed for that street around here.
+
+Your fixes are listed on the Help and settings tab, under Map reports and fixes, each with an Undo button. That section also lists the reports you've sent, each of which opens its OpenStreetMap note so you can see whether it's been fixed, and a button to send any reports still waiting.
+
 # Help and settings tab
 
 At the top are Open user guide in browser and Open release notes in browser.
 
-Next is Offline maps. Maps you've downloaded each have a Delete button. Below them is every map you can download, with the one covering where you are first. Each says how big it is. A map you already have says Update instead, with the date it was built; updating gets the newest OpenStreetMap data.
+Next is Offline maps, then Map reports and fixes, described above.
+
+Offline maps: Maps you've downloaded each have a Delete button. Below them is every map you can download, with the one covering where you are first. Each says how big it is. A map you already have says Update instead, with the date it was built; updating gets the newest OpenStreetMap data.
 
 Then the settings:
 

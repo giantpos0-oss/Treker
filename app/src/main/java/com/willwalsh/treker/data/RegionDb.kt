@@ -101,23 +101,30 @@ class RegionDb(val file: File) {
     /** Named places within [radius] meters, nearest first. */
     fun pois(p: LatLon, radius: Double): List<Place> {
         val out = ArrayList<Pair<Place, Double>>()
-        db.rawQuery("SELECT id, name, kind, lat, lon, address FROM pois WHERE cell IN (${cellList(p, radius)})", null).use { c ->
+        db.rawQuery("SELECT id, name, kind, lat, lon, address, osm FROM pois WHERE cell IN (${cellList(p, radius)})", null).use { c ->
             while (c.moveToNext()) {
                 val pos = LatLon(c.getDouble(3), c.getDouble(4))
                 val d = Geo.distance(p, pos)
-                if (d <= radius) out.add(Place(c.getString(1), pos, c.getString(5) ?: "", c.getString(2) ?: "", "osm:$id:${c.getLong(0)}") to d)
+                if (d <= radius) out.add(Place(c.getString(1), pos, c.getString(5) ?: "", c.getString(2) ?: "", placeKey(c.getString(6), c.getLong(0))) to d)
             }
         }
         return out.sortedBy { it.second }.map { it.first }
     }
 
-    /** The nearest house address within [maxMeters]. */
-    fun nearestAddress(p: LatLon, maxMeters: Double = 60.0): Triple<String, String?, String?>? {
+    /** "osm:node/123" when the map knows the OpenStreetMap object, so reports can point at it. */
+    private fun placeKey(osm: String?, rowId: Long) = if (!osm.isNullOrBlank()) "osm:$osm" else "treker:$id:$rowId"
+
+    /**
+     * The nearest house address within [maxMeters]. An address on the street you're on wins over a
+     * slightly closer one around the corner.
+     */
+    fun nearestAddress(p: LatLon, maxMeters: Double = 50.0, street: String? = null): Triple<String, String?, String?>? {
         var best: Triple<String, String?, String?>? = null
         var bestD = maxMeters
         db.rawQuery("SELECT number, street, city, postcode, lat, lon FROM addresses WHERE cell IN (${cellList(p, maxMeters)})", null).use { c ->
             while (c.moveToNext()) {
-                val d = Geo.distance(p, LatLon(c.getDouble(4), c.getDouble(5)))
+                var d = Geo.distance(p, LatLon(c.getDouble(4), c.getDouble(5)))
+                if (street != null && c.getString(1).equals(street, ignoreCase = true)) d -= 20
                 if (d < bestD) {
                     bestD = d
                     best = Triple("${c.getString(0)} ${c.getString(1)}", c.getString(2)?.ifBlank { null }, c.getString(3)?.ifBlank { null })
@@ -188,9 +195,9 @@ class RegionDb(val file: File) {
             }
         }
         val like = "%" + q.replace("%", "").replace("_", "\\_") + "%"
-        db.rawQuery("SELECT id, name, kind, lat, lon, address FROM pois WHERE name LIKE ? ESCAPE '\\' OR kind LIKE ? ESCAPE '\\' LIMIT 400",
+        db.rawQuery("SELECT id, name, kind, lat, lon, address, osm FROM pois WHERE name LIKE ? ESCAPE '\\' OR kind LIKE ? ESCAPE '\\' LIMIT 400",
             arrayOf(like, like)).use { c ->
-            while (c.moveToNext()) out.add(Place(c.getString(1), LatLon(c.getDouble(3), c.getDouble(4)), c.getString(5) ?: "", c.getString(2) ?: "", "osm:$id:${c.getLong(0)}"))
+            while (c.moveToNext()) out.add(Place(c.getString(1), LatLon(c.getDouble(3), c.getDouble(4)), c.getString(5) ?: "", c.getString(2) ?: "", placeKey(c.getString(6), c.getLong(0))))
         }
         if (number == null) streets(streetPattern(q), 10).forEach { out.add(it) }
         val sorted = if (near != null) out.sortedBy { Geo.distance(near, it.pos) } else out

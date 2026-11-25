@@ -16,4 +16,6 @@ enum class Tab(val label: String) {
 object AppNav {
     val tab = mutableStateOf(Tab.EXPLORE)
     val browseFrom = mutableStateOf<Place?>(null)
+    /** When set, the report-a-map-problem dialog is showing. */
+    val report = mutableStateOf<ReportRequest?>(null)
 }

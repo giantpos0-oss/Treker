@@ -58,7 +58,7 @@ class RouteFollower(
             if (d < bestD) { bestD = d; bestSeg = i }
         }
         seg = bestSeg
-        val proj = along[seg] + Geo.distance(pts[seg], f.pos).coerceAtMost(along[seg + 1] - along[seg])
+        val proj = along[seg] + StreetArea.projectT(f.pos, pts[seg], pts[seg + 1]) * (along[seg + 1] - along[seg])
 
         val offLimit = (if (walking) 25.0 else 60.0) + f.accuracy.coerceAtMost(40f)
         if (bestD > offLimit) { if (++offCount >= 3) { offCount = 0; onOffRoute(); return } } else offCount = 0

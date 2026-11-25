@@ -67,6 +67,11 @@ fun ExploreScreen() {
                 app.speaker.say(placesNote, true)
             }
         }
+        BigButton("Report a map problem") {
+            val here = app.location.fix.value?.pos
+            if (here == null) app.speaker.say("No GPS position yet.", true)
+            else AppNav.report.value = ReportRequest(here, heard = app.explorer.history.firstOrNull())
+        }
         places?.let { list ->
             Heading("Places nearby")
             Text(placesNote, fontSize = 16.sp)

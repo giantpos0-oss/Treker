@@ -3,7 +3,9 @@ package com.willwalsh.treker
 import android.app.Application
 import com.willwalsh.treker.browse.VirtualWalker
 import com.willwalsh.treker.data.Favorites
+import com.willwalsh.treker.data.Corrections
 import com.willwalsh.treker.data.Offline
+import com.willwalsh.treker.data.Reports
 import com.willwalsh.treker.explore.LiveExplorer
 import com.willwalsh.treker.explore.WhatsAround
 import com.willwalsh.treker.location.Compass
@@ -13,6 +15,7 @@ import com.willwalsh.treker.speech.Speaker
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 
 /** Everything that lives as long as the app: speech, GPS, compass, and the explorers. */
 class TrekerApp : Application() {
@@ -31,6 +34,8 @@ class TrekerApp : Application() {
         super.onCreate()
         settings = Settings(this)
         Offline.init(this)
+        Corrections.init(this)
+        Reports.init(this)
         speaker = Speaker(this).also { it.rate = settings.speechRate }
         location = LocationHub(this)
         compass = Compass(this)
@@ -39,5 +44,7 @@ class TrekerApp : Application() {
         whatsAround = WhatsAround(this, scope)
         walker = VirtualWalker(this)
         guidance = Guidance(this, scope)
+        // Reports made without internet go out the next time Treker starts.
+        if (Reports.waiting > 0) scope.launch { Reports.sendWaiting() }
     }
 }

@@ -56,6 +56,11 @@ fun BrowseScreen() {
             else scope.launch { walker.startAt(here) }
         }
         Text(walker.description.value, fontSize = 18.sp, modifier = Modifier.padding(vertical = 8.dp))
+        BigButton("Report a problem here") {
+            val p = walker.position.value
+            if (p == null) app.speaker.say("Map browsing hasn't started.", true)
+            else AppNav.report.value = ReportRequest(p, heard = walker.description.value)
+        }
         AndroidView(
             modifier = Modifier.fillMaxWidth().weight(1f),
             factory = { ctx ->
@@ -65,6 +70,9 @@ fun BrowseScreen() {
                     left = { act { walker.turn(left = true) } },
                     right = { act { walker.turn(left = false) } },
                     tap = { walker.describe() },
+                    report = {
+                        walker.position.value?.let { AppNav.report.value = ReportRequest(it, heard = walker.description.value) }
+                    },
                 )
             },
         )
@@ -82,6 +90,7 @@ class SwipePad(
     private val up: () -> Unit, private val down: () -> Unit,
     private val left: () -> Unit, private val right: () -> Unit,
     private val tap: () -> Unit,
+    private val report: () -> Unit,
 ) : View(context) {
 
     private val detector = GestureDetector(context, object : GestureDetector.SimpleOnGestureListener() {
@@ -106,6 +115,7 @@ class SwipePad(
         ViewCompat.addAccessibilityAction(this, "Turn left") { _, _ -> left(); true }
         ViewCompat.addAccessibilityAction(this, "Turn right") { _, _ -> right(); true }
         ViewCompat.addAccessibilityAction(this, "Where am I") { _, _ -> tap(); true }
+        ViewCompat.addAccessibilityAction(this, "Report a problem here") { _, _ -> report(); true }
     }
 
     override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {

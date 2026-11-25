@@ -33,18 +33,53 @@ class StreetArea(val center: LatLon, val radius: Double, val ways: List<Way>, va
     private val intersectionByNode = intersections.associateBy { it.node }
     fun intersectionAt(node: Long) = intersectionByNode[node]
 
+    /**
+     * Intersections as a person would count them. Where a divided road crosses another street,
+     * the map has two or more junction points a few meters apart; they're merged into one so
+     * Treker doesn't announce the same intersection twice.
+     */
+    val clusters: List<Intersection>
+    private val clusterOfNode = HashMap<Long, Int>()
+    init {
+        val groups = ArrayList<MutableList<Intersection>>()
+        for (i in intersections) {
+            val g = groups.indexOfFirst { grp ->
+                grp.any { o -> Geo.distance(o.pos, i.pos) < 35 && o.streets.any { it in i.streets } }
+            }
+            if (g >= 0) { groups[g].add(i); clusterOfNode[i.node] = g }
+            else { groups.add(mutableListOf(i)); clusterOfNode[i.node] = groups.size - 1 }
+        }
+        clusters = groups.mapIndexed { idx, grp ->
+            val lat = grp.sumOf { it.pos.lat } / grp.size
+            val lon = grp.sumOf { it.pos.lon } / grp.size
+            Intersection(grp.first().node, LatLon(lat, lon), grp.flatMap { it.streets }.distinct())
+        }
+    }
+    fun clusterOf(node: Long): Int? = clusterOfNode[node]
+    fun clusterIntersection(node: Long): Intersection? = clusterOfNode[node]?.let { clusters[it] }
+
     fun covers(p: LatLon, margin: Double) = Geo.distance(center, p) < radius - margin
 
-    /** The named street nearest to [p] and how far away it is, in meters. */
-    fun nearestStreet(p: LatLon): Pair<Way, Double>? {
-        var best: Way? = null; var bestD = Double.MAX_VALUE
+    /**
+     * The named street you're most likely on, and how far away it is, in meters. When you're
+     * moving, a street running the same way you're going wins over a cross street that happens to
+     * be a little closer, so standing at a corner doesn't make Treker name the wrong street.
+     */
+    fun nearestStreet(p: LatLon, course: Double? = null): Pair<Way, Double>? {
+        var best: Way? = null; var bestScore = Double.MAX_VALUE; var bestD = 0.0
         for (w in ways) {
             if (w.name.isBlank()) continue
             for (i in 0 until w.nodes.size - 1) {
                 val a = nodes[w.nodes[i]] ?: continue
                 val b = nodes[w.nodes[i + 1]] ?: continue
                 val d = distanceToSegment(p, a, b)
-                if (d < bestD) { bestD = d; best = w }
+                var score = d
+                if (course != null && d < 40) {
+                    val diff = Math.abs(Geo.angleDiff(course, Geo.bearing(a, b)))
+                    val along = minOf(diff, 180 - diff) // either direction along the street
+                    if (along > 35) score += 15.0
+                }
+                if (score < bestScore) { bestScore = score; bestD = d; best = w }
             }
         }
         return best?.let { it to bestD }
@@ -56,6 +91,16 @@ class StreetArea(val center: LatLon, val radius: Double, val ways: List<Way>, va
             .minByOrNull { n -> nodes[n]?.let { Geo.distance(p, it) } ?: Double.MAX_VALUE }
 
     companion object {
+        /** How far along the segment a-b the point nearest [p] is, from 0 (at a) to 1 (at b). */
+        fun projectT(p: LatLon, a: LatLon, b: LatLon): Double {
+            val k = Math.cos(Math.toRadians(p.lat)) * 111_320.0
+            val ax = (a.lon - p.lon) * k; val ay = (a.lat - p.lat) * 110_540.0
+            val bx = (b.lon - p.lon) * k; val by = (b.lat - p.lat) * 110_540.0
+            val dx = bx - ax; val dy = by - ay
+            val len2 = dx * dx + dy * dy
+            return if (len2 == 0.0) 0.0 else (-(ax * dx + ay * dy) / len2).coerceIn(0.0, 1.0)
+        }
+
         /** Distance from p to the segment a-b, in meters (flat-earth, fine at street scale). */
         fun distanceToSegment(p: LatLon, a: LatLon, b: LatLon): Double {
             val k = Math.cos(Math.toRadians(p.lat)) * 111_320.0

@@ -41,6 +41,7 @@ fun HelpSettingsScreen() {
         Text("Treker version ${BuildConfig.VERSION_NAME}", fontSize = 16.sp)
 
         OfflineMapsSection()
+        ReportsSection()
 
         Heading("Settings")
         SwitchRow("Use meters instead of feet", s.metric) { s.metric = it }

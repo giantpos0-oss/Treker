@@ -50,6 +50,7 @@ android {
     // The user guide and release notes (docs/*.md) are bundled so Help works offline.
     sourceSets { getByName("main") { assets.srcDir(rootProject.file("docs")) } }
     packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
+    testOptions { unitTests.isReturnDefaultValues = true }
 }
 
 kotlin {
@@ -70,4 +71,7 @@ dependencies {
 
     // Valhalla routing engine, running on the phone against the downloaded map's routing tiles.
     implementation("io.github.rallista:valhalla-mobile:0.6.1")
+
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20240303")
 }
