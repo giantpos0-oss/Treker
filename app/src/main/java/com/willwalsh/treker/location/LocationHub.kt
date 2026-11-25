@@ -10,11 +10,9 @@ import android.location.Location
 import android.os.Looper
 import android.view.Surface
 import android.view.WindowManager
-import com.google.android.gms.location.LocationCallback
-import com.google.android.gms.location.LocationRequest
-import com.google.android.gms.location.LocationResult
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
+import android.location.LocationListener
+import android.location.LocationManager
+import android.os.Build
 import com.willwalsh.treker.data.LatLon
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -23,36 +21,55 @@ import kotlinx.coroutines.flow.asStateFlow
 /** A GPS fix. [course] is the direction of travel when moving, or null. */
 data class Fix(val pos: LatLon, val accuracy: Float, val speed: Float, val course: Double?, val time: Long)
 
-/** One shared stream of GPS fixes for the whole app, started by live exploration. */
+/**
+ * One shared stream of GPS fixes for the whole app, started by live exploration. Uses Android's
+ * own location service (no Google services needed): its fused provider on Android 12 and later,
+ * plain GPS before that.
+ */
 class LocationHub(context: Context) {
-    private val client = LocationServices.getFusedLocationProviderClient(context.applicationContext)
+    private val lm = context.applicationContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     private val _fix = MutableStateFlow<Fix?>(null)
     val fix: StateFlow<Fix?> = _fix.asStateFlow()
     private var running = false
 
-    private val callback = object : LocationCallback() {
-        override fun onLocationResult(result: LocationResult) {
-            result.lastLocation?.let { _fix.value = it.toFix() }
-        }
+    private val listener = object : LocationListener {
+        override fun onLocationChanged(loc: Location) { accept(loc) }
+        override fun onProviderEnabled(provider: String) {}
+        override fun onProviderDisabled(provider: String) {}
+        @Deprecated("Deprecated in Android")
+        override fun onStatusChanged(provider: String?, status: Int, extras: android.os.Bundle?) {}
+    }
+
+    private fun accept(loc: Location) {
+        val prev = _fix.value
+        // Ignore a much worse fix arriving soon after a good one.
+        if (prev != null && loc.accuracy > prev.accuracy * 3 && loc.time - prev.time < 5000) return
+        _fix.value = loc.toFix()
     }
 
     @SuppressLint("MissingPermission")
     fun start() {
         if (running) return
         running = true
-        val req = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000L)
-            .setMinUpdateIntervalMillis(500L)
-            .build()
+        val providers = buildList {
+            if (Build.VERSION.SDK_INT >= 31 && lm.allProviders.contains(LocationManager.FUSED_PROVIDER)) add(LocationManager.FUSED_PROVIDER)
+            else {
+                if (lm.allProviders.contains(LocationManager.GPS_PROVIDER)) add(LocationManager.GPS_PROVIDER)
+                if (lm.allProviders.contains(LocationManager.NETWORK_PROVIDER)) add(LocationManager.NETWORK_PROVIDER)
+            }
+        }
         runCatching {
-            client.requestLocationUpdates(req, callback, Looper.getMainLooper())
-            client.lastLocation.addOnSuccessListener { loc -> if (loc != null && _fix.value == null) _fix.value = loc.toFix() }
+            for (p in providers) {
+                lm.requestLocationUpdates(p, 1000L, 0f, listener, Looper.getMainLooper())
+                lm.getLastKnownLocation(p)?.let { if (_fix.value == null) accept(it) }
+            }
         }.onFailure { running = false }
     }
 
     fun stop() {
         if (!running) return
         running = false
-        client.removeLocationUpdates(callback)
+        lm.removeUpdates(listener)
     }
 
     private fun Location.toFix() = Fix(

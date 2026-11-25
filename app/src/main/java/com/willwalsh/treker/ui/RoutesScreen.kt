@@ -27,9 +27,8 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.willwalsh.treker.TrekerApp
-import com.willwalsh.treker.data.AddressLookup
 import com.willwalsh.treker.data.Geo
-import com.willwalsh.treker.data.GooglePlaces
+import com.willwalsh.treker.data.Offline
 import com.willwalsh.treker.data.Place
 import kotlinx.coroutines.launch
 
@@ -57,7 +56,7 @@ fun RoutesScreen() {
         scope.launch {
             val here = app.location.fix.value?.pos
             val list = try {
-                if (GooglePlaces.hasKey) GooglePlaces.search(q, here) else AddressLookup.search(app, q)
+                Offline.search(q, here)
             } catch (e: Exception) {
                 RouteSearch.note.value = e.message ?: "Search didn't work."; searching = false
                 app.speaker.say(RouteSearch.note.value, true); return@launch

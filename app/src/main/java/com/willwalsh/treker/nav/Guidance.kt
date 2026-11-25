@@ -1,284 +1,320 @@
 package com.willwalsh.treker.nav
 
-import android.app.Activity
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import com.google.android.libraries.navigation.AudioGuidanceSettings
-import com.google.android.libraries.navigation.NavigationApi
-import com.google.android.libraries.navigation.Navigator
-import com.google.android.libraries.navigation.RoutingOptions
-import com.google.android.libraries.navigation.SimulationOptions
-import com.google.android.libraries.navigation.Waypoint
 import com.willwalsh.treker.TrekerApp
 import com.willwalsh.treker.data.Geo
-import com.willwalsh.treker.data.GooglePlaces
 import com.willwalsh.treker.data.LatLon
 import com.willwalsh.treker.data.Place
+import com.willwalsh.treker.data.StreetArea
 import com.willwalsh.treker.location.Fix
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 
 enum class TravelMode(val label: String) { PEDESTRIAN("Pedestrian"), MOTORIZED("Motorized"), TRANSIT("Public transit") }
 
 /**
- * Turn-by-turn guidance. Pedestrian and motorized use Google's Navigation SDK (route following,
- * rerouting and spoken turns). Public transit uses Google's Routes API with Treker's own guidance,
- * because the Navigation SDK doesn't do transit.
+ * Follows you along a route and decides what to say: a heads-up before each turn, the turn itself,
+ * and what comes after. Tells [onOffRoute] when you've clearly left the route.
+ */
+class RouteFollower(
+    val route: Route,
+    private val walking: Boolean,
+    private val metric: Boolean,
+    private val say: (String) -> Unit,
+    private val show: (String) -> Unit,
+    private val onOffRoute: () -> Unit,
+    private val onArrive: () -> Unit,
+) {
+    private val pts = route.points
+    /** Cumulative distance along the route at each point. */
+    private val along: DoubleArray = DoubleArray(pts.size).also { a ->
+        for (i in 1 until pts.size) a[i] = a[i - 1] + Geo.distance(pts[i - 1], pts[i])
+    }
+    private var next = 1
+    private var seg = 0
+    private var warnedFar = false
+    private var warnedNear = false
+    private var offCount = 0
+    private var arrived = false
+
+    fun begin() {
+        val first = route.maneuvers.firstOrNull() ?: return
+        say(listOf(first.verbalBefore, first.verbalAfter).filter { it.isNotBlank() }.joinToString(" "))
+        show(first.text)
+    }
+
+    fun onFix(f: Fix) {
+        if (arrived || pts.size < 2) return
+        // Where along the route are you? Look near where you were last time.
+        var bestD = Double.MAX_VALUE; var bestSeg = seg
+        val from = (seg - 5).coerceAtLeast(0); val to = (seg + 80).coerceAtMost(pts.size - 2)
+        for (i in from..to) {
+            val d = StreetArea.distanceToSegment(f.pos, pts[i], pts[i + 1])
+            if (d < bestD) { bestD = d; bestSeg = i }
+        }
+        seg = bestSeg
+        val proj = along[seg] + Geo.distance(pts[seg], f.pos).coerceAtMost(along[seg + 1] - along[seg])
+
+        val offLimit = (if (walking) 25.0 else 60.0) + f.accuracy.coerceAtMost(40f)
+        if (bestD > offLimit) { if (++offCount >= 3) { offCount = 0; onOffRoute(); return } } else offCount = 0
+
+        val total = along.last()
+        if (total - proj < (if (walking) 12.0 else 30.0) && Geo.distance(f.pos, pts.last()) < (if (walking) 20.0 else 50.0)) {
+            arrived = true; onArrive(); return
+        }
+
+        val m = route.maneuvers.getOrNull(next) ?: return
+        val mAt = along[m.shapeIndex.coerceIn(0, pts.size - 1)]
+        val toTurn = mAt - proj
+        val speed = f.speed.toDouble()
+        val far = if (walking) 60.0 else maxOf(400.0, speed * 25)
+        val near = if (walking) 20.0 else maxOf(100.0, speed * 9)
+        val now = if (walking) 7.0 else maxOf(25.0, speed * 2.5)
+        show("In ${Geo.distanceWords(toTurn.coerceAtLeast(0.0), metric)}, ${m.text}")
+
+        when {
+            toTurn <= now -> {
+                say(m.verbalBefore)
+                advance()
+            }
+            toTurn <= near && !warnedNear -> {
+                warnedNear = true; warnedFar = true
+                say("In ${Geo.distanceWords(toTurn, metric)}, ${lowerFirst(m.verbalBefore)}")
+            }
+            toTurn <= far && !warnedFar && toTurn > near * 1.5 -> {
+                warnedFar = true
+                say("In ${Geo.distanceWords(toTurn, metric)}, ${lowerFirst(m.verbalBefore)}")
+            }
+        }
+    }
+
+    private fun advance() {
+        val done = route.maneuvers.getOrNull(next)
+        next++; warnedFar = false; warnedNear = false
+        if (done != null && done.verbalAfter.isNotBlank() && next < route.maneuvers.size) say(done.verbalAfter)
+        route.maneuvers.getOrNull(next)?.let { show(it.text) }
+    }
+
+    /** The upcoming instructions, for the steps list. */
+    fun remaining(): List<String> = route.maneuvers.drop(next).map { it.text }
+
+    private fun lowerFirst(s: String) = if (s.length > 1 && s[0].isUpperCase() && !s[1].isUpperCase()) s[0].lowercase() + s.substring(1) else s
+}
+
+/**
+ * Turn-by-turn guidance, all on the phone. Walking and motorized routes come from Valhalla on the
+ * offline map and are recalculated when you leave them. Public transit trips come from
+ * Transitous; the walks to and from stops are guided offline, and rides announce your stops.
  */
 class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
     val active = mutableStateOf(false)
     val mode = mutableStateOf<TravelMode?>(null)
     val destination = mutableStateOf<Place?>(null)
-    /** The instruction you're working toward now, as shown and spoken. */
     val current = mutableStateOf("")
     val status = mutableStateOf("")
-    /** All the steps of the route, for reviewing the whole trip. */
     val steps = mutableStateListOf<String>()
 
-    private var navigator: Navigator? = null
-    private var transit: TransitTrip? = null
-    private var transitJob: Job? = null
+    private val router by lazy { Router(app) }
+    private var follower: RouteFollower? = null
+    private var trip: TransitTrip? = null
+    private var job: Job? = null
+    private var rerouting = false
+    /** Fixes guidance follows: real GPS, or made-up ones moving along the route in practice mode. */
+    private val fixes = MutableStateFlow<Fix?>(null)
+    private var simJob: Job? = null
     private val metric get() = app.settings.metric
 
-    private fun say(text: String, interrupt: Boolean = true) = app.speaker.say(text, interrupt)
+    private fun say(text: String, interrupt: Boolean = false) = app.speaker.say(text, interrupt)
+    private fun show(text: String) { current.value = text; refreshSteps() }
 
-    fun start(activity: Activity, place: Place, travel: TravelMode) {
+    private fun refreshSteps() {
+        steps.clear()
+        follower?.let { steps.addAll(it.remaining()) }
+        trip?.let { t -> steps.clear(); steps.addAll(t.legs.drop(t.index).map { it.instruction }) }
+    }
+
+    fun start(place: Place, travel: TravelMode) {
         stop(silent = true)
-        if (!GooglePlaces.hasKey) {
-            say("Navigation needs Treker's Google key, which isn't set up in this build yet.")
+        val here = app.location.fix.value
+        if (here == null) { say("Your location isn't known yet. Wait for GPS and try again.", true); return }
+        destination.value = place; mode.value = travel; active.value = true
+        current.value = ""; steps.clear()
+        status.value = "Getting a ${travel.label.lowercase()} route to ${place.name}."
+        say(status.value, true)
+        job = scope.launch {
+            // Real GPS feeds guidance unless practice mode is moving you along the route.
+            launch { app.location.fix.collect { f -> if (simJob == null && f != null) fixes.value = f } }
+            try {
+                if (travel == TravelMode.TRANSIT) startTransit(here.pos, place) else startRoute(here, place, travel == TravelMode.PEDESTRIAN)
+            } catch (e: Exception) {
+                status.value = e.message ?: "Couldn't start guidance."
+                say(status.value, true)
+                stop(silent = true)
+                return@launch
+            }
+            fixes.collect { f -> if (f != null && active.value) onFix(f) }
+        }
+    }
+
+    private suspend fun startRoute(here: Fix, place: Place, walking: Boolean) {
+        val route = router.route(here.pos, place.pos, walking, metric, here.course)
+        follow(route, walking, onArrive = { arrive() })
+        status.value = "${Geo.distanceWords(route.lengthMeters, metric)} to ${place.name}, about ${minutes(route.seconds)}."
+        say(status.value)
+        follower?.begin()
+        if (app.settings.simulate) simulate(route, walking)
+    }
+
+    private fun follow(route: Route, walking: Boolean, onArrive: () -> Unit) {
+        follower = RouteFollower(route, walking, metric,
+            say = { say(it) }, show = { show(it) },
+            onOffRoute = { reroute(walking, onArrive) }, onArrive = onArrive)
+        refreshSteps()
+    }
+
+    private fun reroute(walking: Boolean, onArrive: () -> Unit) {
+        if (rerouting) return
+        val target = follower?.route?.points?.lastOrNull() ?: return
+        val f = fixes.value ?: return
+        rerouting = true
+        say("Off route. Recalculating.", true)
+        scope.launch {
+            try {
+                val r = router.route(f.pos, target, walking, metric, f.course)
+                follow(r, walking, onArrive)
+                follower?.begin()
+            } catch (e: Exception) {
+                say(e.message ?: "Couldn't recalculate.", true)
+            } finally { rerouting = false }
+        }
+    }
+
+    private fun onFix(f: Fix) {
+        follower?.onFix(f)
+        trip?.let { onTransitFix(it, f) }
+    }
+
+    private fun arrive() {
+        val name = destination.value?.name ?: "your destination"
+        status.value = "Arrived at $name."
+        say(status.value, true)
+        stop(silent = true)
+    }
+
+    // ---- Public transit ----
+
+    private suspend fun startTransit(from: LatLon, place: Place) {
+        val t = Transit.plan(from, place.pos, metric) ?: throw Exception("No public transit trip found to ${place.name}.")
+        if (t.legs.isEmpty()) throw Exception("No public transit trip found to ${place.name}.")
+        trip = t
+        status.value = "Transit trip to ${place.name}: ${t.summary}"
+        say(status.value)
+        startLeg(t)
+    }
+
+    private suspend fun startLeg(t: TransitTrip) {
+        val leg = t.legs.getOrNull(t.index) ?: return
+        follower = null
+        show(leg.instruction)
+        say(leg.instruction)
+        if (leg.walking) {
+            // Walk to the stop with offline walking guidance when the map allows; otherwise straight-line hints.
+            val here = fixes.value?.pos ?: leg.from.pos
+            runCatching { router.route(here, leg.to.pos, true, metric, fixes.value?.course) }.onSuccess { r ->
+                follow(r, true, onArrive = { advanceLeg() })
+                if (app.settings.simulate) simulate(r, true)
+            }
+        }
+        refreshSteps()
+    }
+
+    private var advancing = false
+
+    /** Moves to the next part of the trip, once, however many GPS fixes ask for it. */
+    private fun advanceLeg() {
+        if (advancing) return
+        advancing = true
+        val t = trip ?: return
+        t.index++
+        scope.launch {
+            try { if (t.index >= t.legs.size) arrive() else startLeg(t) } finally { advancing = false }
+        }
+    }
+
+    private fun onTransitFix(t: TransitTrip, f: Fix) {
+        val leg = t.legs.getOrNull(t.index) ?: return
+        if (leg.walking) {
+            if (follower == null) {
+                val d = Geo.distance(f.pos, leg.to.pos)
+                current.value = "${leg.to.name}: ${Geo.distanceWords(d, metric)}, ${Geo.compassWord(Geo.bearing(f.pos, leg.to.pos))}"
+                if (d < 20) advanceLeg()
+            }
             return
         }
-        destination.value = place; mode.value = travel; active.value = true
-        steps.clear(); current.value = ""
-        status.value = "Getting a ${travel.label.lowercase()} route to ${place.name}."
-        say(status.value)
-        when (travel) {
-            TravelMode.TRANSIT -> startTransit(place)
-            else -> startNavSdk(activity, place, travel)
+        val fromStart = Geo.distance(f.pos, leg.from.pos)
+        if (!leg.boarded && fromStart > 150) {
+            leg.boarded = true
+            say("Riding the ${leg.lineName}. I'll tell you as you pass each stop.")
+        }
+        if (!leg.boarded) return
+        // Count the stops you've passed.
+        while (leg.stopsPassed < leg.between.size && Geo.distance(f.pos, leg.between[leg.stopsPassed].pos) < 60) {
+            val s = leg.between[leg.stopsPassed]
+            leg.stopsPassed++
+            val left = leg.between.size - leg.stopsPassed + 1
+            say(if (left == 1) "${s.name}. Your stop, ${leg.to.name}, is next." else "${s.name}. $left stops to go.")
+            current.value = "$left stops to ${leg.to.name}"
+        }
+        val toEnd = Geo.distance(f.pos, leg.to.pos)
+        if (!leg.warned && toEnd < 400) { leg.warned = true; say("Get ready, ${leg.to.name} is coming up.") }
+        if (toEnd < 60 && !advancing) { say("Get off now at ${leg.to.name}.", true); advanceLeg() }
+    }
+
+    // ---- Practice mode ----
+
+    private fun simulate(route: Route, walking: Boolean) {
+        simJob?.cancel()
+        simJob = scope.launch {
+            val speed = if (walking) 1.4 else 12.0
+            val pts = route.points
+            var i = 0
+            var pos = pts.first()
+            delay(4000)
+            while (isActive && i < pts.size - 1) {
+                var step = speed
+                while (step > 0 && i < pts.size - 1) {
+                    val d = Geo.distance(pos, pts[i + 1])
+                    if (d <= step) { pos = pts[i + 1]; step -= d; i++ }
+                    else { pos = Geo.move(pos, Geo.bearing(pos, pts[i + 1]), step); step = 0.0 }
+                }
+                val course = if (i < pts.size - 1) Geo.bearing(pos, pts[i + 1]) else null
+                fixes.value = Fix(pos, 5f, speed.toFloat(), course, System.currentTimeMillis())
+                delay(1000)
+            }
         }
     }
 
-    // ---- Pedestrian and motorized: Google's Navigation SDK ----
-
-    private fun startNavSdk(activity: Activity, place: Place, travel: TravelMode) {
-        NavigationApi.getNavigator(activity, object : NavigationApi.NavigatorListener {
-            override fun onNavigatorReady(nav: Navigator) {
-                if (!active.value) return
-                navigator = nav
-                val wp = runCatching {
-                    if (place.placeId != null) Waypoint.builder().setPlaceIdString(place.placeId).setTitle(place.name).build()
-                    else null
-                }.getOrNull() ?: Waypoint.builder().setLatLng(place.pos.lat, place.pos.lon).setTitle(place.name).build()
-                val options = RoutingOptions().travelMode(
-                    if (travel == TravelMode.PEDESTRIAN) RoutingOptions.TravelMode.WALKING else RoutingOptions.TravelMode.DRIVING
-                )
-                nav.setAudioGuidanceSettings(
-                    AudioGuidanceSettings.builder()
-                        .setGuidanceMode(AudioGuidanceSettings.GuidanceMode.VOICE_ALERTS_AND_GUIDANCE)
-                        .build()
-                )
-                nav.registerServiceForNavUpdates(app.packageName, NavUpdatesService::class.java.name, 30)
-                nav.addArrivalListener { _ ->
-                    say("Arrived at ${place.name}.")
-                    status.value = "Arrived at ${place.name}."
-                    stop(silent = true)
-                }
-                nav.setDestination(wp, options).setOnResultListener { routeStatus ->
-                    if (routeStatus == Navigator.RouteStatus.OK) {
-                        status.value = "Guiding you to ${place.name}."
-                        if (app.settings.simulate) {
-                            nav.simulator.simulateLocationsAlongExistingRoute(SimulationOptions().speedMultiplier(if (travel == TravelMode.PEDESTRIAN) 1f else 2f))
-                        }
-                        nav.startGuidance()
-                    } else {
-                        status.value = routeProblem(routeStatus)
-                        say(status.value)
-                        stop(silent = true)
-                    }
-                }
-            }
-
-            override fun onError(errorCode: Int) {
-                status.value = when (errorCode) {
-                    NavigationApi.ErrorCode.NOT_AUTHORIZED -> "Google didn't accept Treker's key for navigation. The Navigation SDK may not be turned on for it."
-                    NavigationApi.ErrorCode.TERMS_NOT_ACCEPTED -> "Google's navigation terms need to be accepted before guidance can start."
-                    NavigationApi.ErrorCode.NETWORK_ERROR -> "No internet connection, so navigation couldn't start."
-                    NavigationApi.ErrorCode.LOCATION_PERMISSION_MISSING -> "Treker needs location permission to navigate."
-                    else -> "Navigation couldn't start, error $errorCode."
-                }
-                say(status.value)
-                active.value = false
-            }
-        })
-    }
-
-    private fun routeProblem(s: Navigator.RouteStatus): String = when (s) {
-        Navigator.RouteStatus.NO_ROUTE_FOUND -> "No route found to ${destination.value?.name}."
-        Navigator.RouteStatus.NETWORK_ERROR -> "No internet connection, so no route could be found."
-        Navigator.RouteStatus.QUOTA_CHECK_FAILED -> "Treker's Google navigation allowance is used up for now."
-        Navigator.RouteStatus.LOCATION_DISABLED, Navigator.RouteStatus.LOCATION_UNKNOWN -> "Your location isn't known yet. Wait for GPS and try again."
-        else -> "Couldn't get a route: $s."
-    }
-
-    /** Called by [NavUpdatesService] with each turn-by-turn update from the Navigation SDK. */
-    fun onNavStep(instruction: String?, metersToStep: Int?, upcoming: List<String>) {
-        if (instruction.isNullOrBlank()) return
-        current.value = if (metersToStep != null) "In ${Geo.distanceWords(metersToStep.toDouble(), metric)}, $instruction" else instruction
-        steps.clear(); steps.add(current.value); steps.addAll(upcoming)
-    }
-
-    // ---- Public transit: Routes API plus Treker's own guidance ----
-
-    private fun startTransit(place: Place) {
-        val from = app.location.fix.value?.pos
-        if (from == null) { status.value = "Your location isn't known yet. Wait for GPS and try again."; say(status.value); active.value = false; return }
-        transitJob = scope.launch {
-            val trip = try { TransitTrip.plan(from, place, metric) } catch (e: Exception) {
-                status.value = e.message ?: "Couldn't plan a transit trip."; say(status.value); active.value = false; return@launch
-            }
-            if (trip == null || trip.legs.isEmpty()) {
-                status.value = "No public transit route found to ${place.name}."; say(status.value); active.value = false; return@launch
-            }
-            transit = trip
-            steps.clear(); steps.addAll(trip.legs.map { it.instruction })
-            status.value = "Transit trip to ${place.name}: ${trip.summary}"
-            say(status.value)
-            announceTransitLeg()
-            app.location.fix.collect { f -> if (f != null && active.value) onTransitFix(f) }
-        }
-    }
-
-    private fun announceTransitLeg() {
-        val t = transit ?: return
-        val leg = t.legs.getOrNull(t.index) ?: return
-        current.value = leg.instruction
-        say(leg.instruction, interrupt = false)
-    }
-
-    private fun onTransitFix(f: Fix) {
-        val t = transit ?: return
-        val leg = t.legs.getOrNull(t.index) ?: return
-        val toEnd = Geo.distance(f.pos, leg.end)
-        if (leg.isTransit) {
-            val fromStart = Geo.distance(f.pos, leg.start)
-            if (!leg.boarded && fromStart > 150) { leg.boarded = true; say("Riding ${leg.lineName}. I'll tell you when your stop is coming up.") }
-            if (leg.boarded && !leg.warned && toEnd < 500) { leg.warned = true; say("Your stop, ${leg.endName}, is coming up. Get ready.") }
-            if (leg.boarded && toEnd < 90) { say("Get off now at ${leg.endName}."); next() }
-        } else {
-            if (toEnd < 20) next()
-            else current.value = "${leg.instruction} ${Geo.distanceWords(toEnd, metric)} to go."
-        }
-    }
-
-    private fun next() {
-        val t = transit ?: return
-        t.index++
-        if (t.index >= t.legs.size) {
-            say("Arrived at ${destination.value?.name}.")
-            status.value = "Arrived at ${destination.value?.name}."
-            stop(silent = true)
-        } else announceTransitLeg()
-    }
-
-    /** Repeat the current instruction. */
     fun repeat() {
         val text = current.value.ifBlank { status.value }
-        say(text.ifBlank { "No guidance running." })
+        say(text.ifBlank { "No guidance running." }, true)
     }
 
     fun stop(silent: Boolean = false) {
         val wasActive = active.value
         active.value = false
-        navigator?.let { nav ->
-            runCatching { nav.stopGuidance(); nav.clearDestinations(); nav.simulator.unsetUserLocation() }
-        }
-        navigator = null
-        transitJob?.cancel(); transitJob = null
-        transit = null
-        if (wasActive && !silent) say("Guidance stopped.")
-    }
-}
-
-/** A planned public transit trip from the Routes API, broken into walking and riding legs. */
-class TransitTrip(val legs: List<Leg>, val summary: String) {
-    var index = 0
-
-    class Leg(
-        val instruction: String, val start: LatLon, val end: LatLon,
-        val isTransit: Boolean, val lineName: String = "", val endName: String = "",
-    ) {
-        var boarded = false
-        var warned = false
+        job?.cancel(); job = null
+        simJob?.cancel(); simJob = null
+        follower = null; trip = null
+        if (wasActive && !silent) say("Guidance stopped.", true)
     }
 
-    companion object {
-        suspend fun plan(from: LatLon, to: Place, metric: Boolean): TransitTrip? {
-            fun loc(p: LatLon) = JSONObject().put("location", JSONObject().put("latLng",
-                JSONObject().put("latitude", p.lat).put("longitude", p.lon)))
-            val body = JSONObject()
-                .put("origin", loc(from))
-                .put("destination", if (to.placeId != null) JSONObject().put("placeId", to.placeId) else loc(to.pos))
-                .put("travelMode", "TRANSIT")
-                .put("units", if (metric) "METRIC" else "IMPERIAL")
-            val res = GooglePlaces.post(
-                "https://routes.googleapis.com/directions/v2:computeRoutes", body,
-                "routes.duration,routes.distanceMeters,routes.localizedValues," +
-                    "routes.legs.steps.travelMode,routes.legs.steps.distanceMeters,routes.legs.steps.navigationInstruction," +
-                    "routes.legs.steps.startLocation,routes.legs.steps.endLocation,routes.legs.steps.transitDetails",
-            )
-            val route = res.optJSONArray("routes")?.optJSONObject(0) ?: return null
-            val out = ArrayList<Leg>()
-            val legs = route.optJSONArray("legs") ?: return null
-            for (l in 0 until legs.length()) {
-                val st = legs.getJSONObject(l).optJSONArray("steps") ?: continue
-                for (s in 0 until st.length()) {
-                    val step = st.getJSONObject(s)
-                    val start = latLng(step.optJSONObject("startLocation")) ?: continue
-                    val end = latLng(step.optJSONObject("endLocation")) ?: continue
-                    val td = step.optJSONObject("transitDetails")
-                    if (step.optString("travelMode") == "TRANSIT" && td != null) {
-                        val sd = td.optJSONObject("stopDetails")
-                        val dep = sd?.optJSONObject("departureStop")?.optString("name").orEmpty()
-                        val arr = sd?.optJSONObject("arrivalStop")?.optString("name").orEmpty()
-                        val line = td.optJSONObject("transitLine")
-                        val vehicle = line?.optJSONObject("vehicle")?.optJSONObject("name")?.optString("text").orEmpty().ifBlank { "Transit" }
-                        val lineName = "$vehicle ${line?.optString("nameShort").orEmpty().ifBlank { line?.optString("name").orEmpty() }}".trim()
-                        val headsign = td.optString("headsign")
-                        val time = td.optJSONObject("localizedValues")?.optJSONObject("departureTime")
-                            ?.optJSONObject("time")?.optString("text").orEmpty()
-                        val stops = td.optInt("stopCount", 0)
-                        val text = buildString {
-                            append("At $dep, take $lineName")
-                            if (headsign.isNotBlank()) append(" toward $headsign")
-                            if (time.isNotBlank()) append(", leaving at $time")
-                            append(". Ride ")
-                            append(if (stops == 1) "1 stop" else "$stops stops")
-                            append(" and get off at $arr.")
-                        }
-                        out.add(Leg(text, start, end, true, lineName, arr))
-                    } else {
-                        val instr = step.optJSONObject("navigationInstruction")?.optString("instructions").orEmpty()
-                        val dist = step.optInt("distanceMeters", 0)
-                        if (instr.isBlank() && dist < 5) continue
-                        out.add(Leg("${instr.ifBlank { "Walk" }}, ${Geo.distanceWords(dist.toDouble(), metric)}.", start, end, false))
-                    }
-                }
-            }
-            val lv = route.optJSONObject("localizedValues")
-            val duration = lv?.optJSONObject("duration")?.optString("text").orEmpty()
-            val rides = out.count { it.isTransit }
-            val summary = buildString {
-                if (duration.isNotBlank()) append("about $duration, ")
-                append(if (rides == 1) "1 ride." else "$rides rides.")
-            }
-            return TransitTrip(out, summary)
-        }
-
-        private fun latLng(o: JSONObject?): LatLon? {
-            val ll = o?.optJSONObject("latLng") ?: return null
-            return LatLon(ll.optDouble("latitude"), ll.optDouble("longitude"))
-        }
+    private fun minutes(s: Double): String {
+        val m = (s / 60).toInt().coerceAtLeast(1)
+        return if (m >= 60) "${m / 60} hours ${m % 60} minutes" else "$m minutes"
     }
 }

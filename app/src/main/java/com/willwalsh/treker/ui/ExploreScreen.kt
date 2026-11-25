@@ -22,7 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.willwalsh.treker.LiveItem
 import com.willwalsh.treker.TrekerApp
-import com.willwalsh.treker.data.GoogleKeyMissing
+import com.willwalsh.treker.data.Offline
 import com.willwalsh.treker.data.Place
 import kotlinx.coroutines.launch
 
@@ -49,6 +49,11 @@ fun ExploreScreen() {
             app.speaker.say(if (on) "Live exploration on." else "Live exploration paused.", true)
         }
         Text(app.explorer.status.value, fontSize = 16.sp, modifier = Modifier.padding(vertical = 4.dp))
+        val fix = app.location.fix.value
+        if (fix != null && !Offline.hasMapFor(fix.pos)) {
+            Text("There's no offline map for where you are yet.", fontSize = 18.sp)
+            BigButton("Get the offline map") { AppNav.tab.value = Tab.HELP }
+        }
 
         BigButton("Where am I") { app.speaker.say(app.explorer.whereAmI(), true) }
         BigButton("Nearest intersection") { scope.launch { app.speaker.say(app.explorer.nearestIntersection(), true) } }
@@ -58,7 +63,6 @@ fun ExploreScreen() {
                     val list = app.explorer.nearbyPlaces()
                     places = list
                     placesNote = if (list.isEmpty()) "No places found nearby." else "${list.size} places nearby, nearest first."
-                } catch (e: GoogleKeyMissing) { places = emptyList(); placesNote = e.message.orEmpty() }
                 catch (e: Exception) { places = emptyList(); placesNote = e.message ?: "Couldn't get places." }
                 app.speaker.say(placesNote, true)
             }

@@ -39,8 +39,6 @@ jobs:
             echo "::warning::No TREKER_SIGNING secret: release build uses a temporary debug key"
           fi
       - name: Build debug and release APKs
-        env:
-          TREKER_GOOGLE_KEY: ${{ secrets.TREKER_GOOGLE_KEY }}
         run: |
           chmod +x gradlew
           set -o pipefail
@@ -61,9 +59,8 @@ jobs:
           apk=$(ls app/build/outputs/apk/release/*.apk | head -1)
           signer=$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner
           cert=$("$signer" verify --print-certs "$apk" | grep -m1 "SHA-256" | sed 's/.*: //')
-          sha1=$("$signer" verify --print-certs "$apk" | grep -m1 "SHA-1" | sed 's/.*: //')
           echo "::notice title=Release signing certificate::SHA-256 $cert"
-          echo "::notice title=SHA-1 for the Google key restriction::$sha1"
+
       - uses: actions/upload-artifact@v4
         with:
           name: Treker-apks

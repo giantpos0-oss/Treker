@@ -6,4 +6,6 @@ Download the newest build: https://github.com/giantpos0-oss/Treker/releases/late
 
 See docs/user-guide.md for how to use it and docs/release-notes.md for what changed.
 
-Places, search and navigation from Google Maps Platform. Streets and intersections © OpenStreetMap contributors (ODbL).
+Everything is OpenStreetMap and works offline: maps are downloaded per region from this repo's "maps" release (built by the "Build offline map" workflow), and routes are made on the phone with Valhalla. Public transit trips come from Transitous (transitous.org).
+
+Map data © OpenStreetMap contributors, available under the Open Database License.

@@ -31,7 +31,7 @@ class VirtualWalker(private val app: TrekerApp) {
     suspend fun startAt(start: LatLon, label: String? = null) {
         say("Loading streets.")
         val a = StreetMap.around(start, 900.0)
-        if (a == null) { say("Couldn't load streets. Check your internet connection and try again."); return }
+        if (a == null) { say("There's no offline map here. Download one in Help and settings, under Offline maps."); return }
         area = a
         val n = a.nearestNode(start)
         if (n == null) { say("No streets found here."); return }

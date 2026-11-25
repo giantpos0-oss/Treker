@@ -1,0 +1,376 @@
+#!/usr/bin/env python3
+"""
+Builds Treker's offline street database for one region from an OpenStreetMap .osm.pbf extract.
+
+    python3 build_region.py region.osm.pbf out.db --id illinois --name "Illinois"
+
+The database holds everything Treker needs offline except routing (Valhalla tiles are built
+separately):
+  streets        named streets and paths, geometry as packed int32 lat/lon/junction triples
+  street_cells   which ~1 km cells each street passes through, for fast lookups around a point
+  junctions      every node shared by two or more named streets, with the street names there
+  pois           named places (shops, restaurants, stops, landmarks...) with a spoken kind
+  addresses      house numbers with street, city and zip code
+  areas          country, state, county, city, neighborhood and zip polygons for "where am I"
+  meta           region id, name, bounding box, build date
+
+Map data © OpenStreetMap contributors, ODbL.
+"""
+import argparse
+import datetime
+import sqlite3
+import struct
+import sys
+
+import numpy as np
+import osmium
+from shapely.geometry import MultiPolygon, Polygon
+
+CELL = 0.01  # degrees, about 1.1 km north-south
+
+
+def cell_of(lat, lon):
+    return int((lat + 90) / CELL) * 100000 + int((lon + 180) / CELL)
+
+
+SKIP_HIGHWAY = {"proposed", "construction", "abandoned", "platform", "raceway", "bus_guideway",
+                "elevator", "razed", "disused", "no", "via_ferrata"}
+
+
+def street_name(tags):
+    name = tags.get("name") or tags.get("ref")
+    hw = tags.get("highway")
+    if not hw or hw in SKIP_HIGHWAY or tags.get("area") == "yes":
+        return None
+    return name
+
+
+# ---- What a place is, in words a person would say ----
+
+POI_KEYS = ["amenity", "shop", "tourism", "leisure", "office", "healthcare", "craft", "historic",
+            "public_transport", "railway", "aeroway", "man_made", "emergency", "sport", "club", "building"]
+
+SPECIAL_KINDS = {
+    ("amenity", "fast_food"): "Fast food",
+    ("amenity", "fuel"): "Gas station",
+    ("amenity", "pharmacy"): "Pharmacy",
+    ("amenity", "place_of_worship"): "Place of worship",
+    ("amenity", "bus_station"): "Bus station",
+    ("amenity", "parking"): "Parking",
+    ("amenity", "toilets"): "Restrooms",
+    ("amenity", "atm"): "ATM",
+    ("shop", "supermarket"): "Supermarket",
+    ("shop", "convenience"): "Convenience store",
+    ("shop", "department_store"): "Department store",
+    ("shop", "mall"): "Shopping mall",
+    ("highway", "bus_stop"): "Bus stop",
+    ("public_transport", "platform"): "Transit stop",
+    ("public_transport", "station"): "Transit station",
+    ("public_transport", "stop_position"): None,
+    ("railway", "station"): "Train station",
+    ("railway", "halt"): "Train station",
+    ("railway", "tram_stop"): "Tram stop",
+    ("railway", "subway_entrance"): "Subway entrance",
+    ("aeroway", "aerodrome"): "Airport",
+    ("tourism", "hotel"): "Hotel",
+    ("leisure", "park"): "Park",
+}
+
+SKIP_VALUES = {"yes", "no", "parking_space", "parking_entrance", "bench", "waste_basket", "bicycle_parking",
+               "vending_machine", "grit_bin", "house", "residential", "detached", "garage", "garages",
+               "apartments", "shed", "roof", "terrace", "semidetached_house", "hut", "boundary_stone",
+               "survey_point", "pole", "street_lamp", "manhole", "utility_pole", "pipeline", "tower",
+               "mast", "storage_tank", "silo", "chimney", "water_tower", "flagpole", "clock", "cairn"}
+
+
+def poi_kind(tags):
+    if tags.get("highway") == "bus_stop":
+        return "Bus stop"
+    for k in POI_KEYS:
+        v = tags.get(k)
+        if not v:
+            continue
+        if (k, v) in SPECIAL_KINDS:
+            return SPECIAL_KINDS[(k, v)]
+        if v in SKIP_VALUES:
+            if k == "building":
+                return None
+            continue
+        words = v.replace("_", " ").replace(";", ", ")
+        if k == "shop":
+            return words.capitalize() + " shop"
+        if k == "office":
+            return words.capitalize() + " office"
+        if k == "building":
+            return words.capitalize() + " building"
+        return words.capitalize()
+    return None
+
+
+class Pass1(osmium.SimpleHandler):
+    """Counts how many named-street ways use each node, to find junctions."""
+
+    def __init__(self):
+        super().__init__()
+        self.chunks = []
+        self.buf = []
+
+    def way(self, w):
+        if street_name(w.tags) is None:
+            return
+        # Each node counted once per way, so a looping way doesn't make false junctions.
+        self.buf.extend(set(n.ref for n in w.nodes))
+        if len(self.buf) > 1_000_000:
+            self.chunks.append(np.array(self.buf, dtype=np.int64))
+            self.buf = []
+
+    def junction_nodes(self):
+        if self.buf:
+            self.chunks.append(np.array(self.buf, dtype=np.int64))
+        if not self.chunks:
+            return np.array([], dtype=np.int64)
+        all_refs = np.concatenate(self.chunks)
+        uniq, counts = np.unique(all_refs, return_counts=True)
+        return uniq[counts >= 2]
+
+
+class Pass2(osmium.SimpleHandler):
+    def __init__(self, db, junction_ids):
+        super().__init__()
+        self.db = db
+        # node id -> junction index
+        self.junction_index = {int(n): i for i, n in enumerate(junction_ids)}
+        self.junction_pos = [None] * len(junction_ids)
+        self.junction_names = [set() for _ in junction_ids]
+        self.streets = []
+        self.street_cells = []
+        self.pois = []
+        self.addresses = []
+        self.areas = []
+        self.place_nodes = []
+        self.bbox = [90.0, 180.0, -90.0, -180.0]
+        self.next_street = 1
+        self.next_poi = 1
+
+    def flush(self, force=False):
+        c = self.db
+        if force or len(self.streets) > 20000:
+            c.executemany("INSERT INTO streets VALUES (?,?,?,?)", self.streets)
+            c.executemany("INSERT INTO street_cells VALUES (?,?)", self.street_cells)
+            self.streets.clear(); self.street_cells.clear()
+        if force or len(self.pois) > 20000:
+            c.executemany("INSERT INTO pois VALUES (?,?,?,?,?,?,?)", self.pois)
+            self.pois.clear()
+        if force or len(self.addresses) > 20000:
+            c.executemany("INSERT INTO addresses VALUES (?,?,?,?,?,?,?)", self.addresses)
+            self.addresses.clear()
+
+    def grow(self, lat, lon):
+        b = self.bbox
+        b[0] = min(b[0], lat); b[1] = min(b[1], lon); b[2] = max(b[2], lat); b[3] = max(b[3], lon)
+
+    def add_poi_or_address(self, tags, lat, lon):
+        name = tags.get("name")
+        if name:
+            kind = poi_kind(tags)
+            if kind:
+                street = tags.get("addr:street", "")
+                num = tags.get("addr:housenumber", "")
+                addr = f"{num} {street}".strip()
+                self.pois.append((self.next_poi, name, kind, lat, lon, cell_of(lat, lon), addr))
+                self.next_poi += 1
+        num = tags.get("addr:housenumber")
+        street = tags.get("addr:street")
+        if num and street:
+            self.addresses.append((num, street, tags.get("addr:city", ""), tags.get("addr:postcode", ""),
+                                   lat, lon, cell_of(lat, lon)))
+        self.flush()
+
+    def node(self, n):
+        if not n.location.valid():
+            return
+        lat, lon = n.location.lat, n.location.lon
+        self.grow(lat, lon)
+        idx = self.junction_index.get(n.id)
+        if idx is not None:
+            self.junction_pos[idx] = (lat, lon)
+        tags = n.tags
+        if len(tags) == 0:
+            return
+        place = tags.get("place")
+        if place in ("neighbourhood", "suburb", "quarter") and tags.get("name"):
+            self.place_nodes.append(("neighborhood", tags.get("name"), lat, lon))
+        self.add_poi_or_address(tags, lat, lon)
+
+    def way(self, w):
+        name = street_name(w.tags)
+        if name is None:
+            return
+        try:
+            pts = [(n.lat, n.lon, n.ref) for n in w.nodes]
+        except osmium.InvalidLocationError:
+            pts = [(n.lat, n.lon, n.ref) for n in w.nodes if n.location.valid()]
+        if len(pts) < 2:
+            return
+        sid = self.next_street
+        self.next_street += 1
+        blob = bytearray()
+        cells = set()
+        for lat, lon, ref in pts:
+            j = self.junction_index.get(ref, -1)
+            if j >= 0:
+                self.junction_names[j].add(name)
+            blob += struct.pack("<iii", round(lat * 1e6), round(lon * 1e6), j)
+            cells.add(cell_of(lat, lon))
+        self.streets.append((sid, name, w.tags.get("highway"), bytes(blob)))
+        self.street_cells.extend((c, sid) for c in cells)
+        self.flush()
+
+    def area(self, a):
+        tags = a.tags
+        level = None
+        name = tags.get("name")
+        boundary = tags.get("boundary")
+        if boundary == "administrative":
+            level = {"2": "country", "4": "state", "6": "county", "7": "city", "8": "city",
+                     "9": "neighborhood", "10": "neighborhood"}.get(tags.get("admin_level"))
+        elif boundary == "postal_code" and tags.get("postal_code"):
+            level, name = "zip", tags.get("postal_code")
+        elif tags.get("place") in ("city", "town", "village", "hamlet") and name:
+            level = "city"
+        elif tags.get("place") in ("neighbourhood", "suburb", "quarter") and name:
+            level = "neighborhood"
+        if level and name:
+            self.add_area(level, name, a)
+            return
+        # A place mapped as a building or area: use its middle.
+        if name and poi_kind(tags) or (tags.get("addr:housenumber") and tags.get("addr:street")):
+            try:
+                ring = next(iter(a.outer_rings()))
+                lats = [n.lat for n in ring]; lons = [n.lon for n in ring]
+            except (StopIteration, osmium.InvalidLocationError):
+                return
+            if lats:
+                self.add_poi_or_address(tags, sum(lats) / len(lats), sum(lons) / len(lons))
+
+    def add_area(self, level, name, a):
+        polys = []
+        try:
+            for outer in a.outer_rings():
+                shell = [(n.lon, n.lat) for n in outer]
+                holes = [[(n.lon, n.lat) for n in inner] for inner in a.inner_rings(outer)]
+                if len(shell) >= 4:
+                    polys.append(Polygon(shell, [h for h in holes if len(h) >= 4]))
+        except osmium.InvalidLocationError:
+            return
+        if not polys:
+            return
+        geom = MultiPolygon(polys) if len(polys) > 1 else polys[0]
+        # Simplify: about 20 m accuracy is plenty for "which city am I in".
+        geom = geom.simplify(0.0002, preserve_topology=True)
+        if geom.is_empty:
+            return
+        self.areas.append((level, name, geom))
+
+
+def pack_rings(geom):
+    """All rings, outer and inner: count, then for each ring its point count and int32 lat/lon pairs.
+    Point-in-polygon with the even-odd rule over every ring gives the right answer for holes."""
+    polys = list(geom.geoms) if geom.geom_type == "MultiPolygon" else [geom]
+    rings = []
+    for p in polys:
+        rings.append(p.exterior.coords)
+        rings.extend(i.coords for i in p.interiors)
+    out = bytearray(struct.pack("<i", len(rings)))
+    for r in rings:
+        pts = list(r)
+        out += struct.pack("<i", len(pts))
+        for lon, lat in pts:
+            out += struct.pack("<ii", round(lat * 1e6), round(lon * 1e6))
+    return bytes(out)
+
+
+SCHEMA = """
+CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
+CREATE TABLE streets (id INTEGER PRIMARY KEY, name TEXT, kind TEXT, geom BLOB);
+CREATE TABLE street_cells (cell INTEGER, street INTEGER);
+CREATE TABLE junctions (id INTEGER PRIMARY KEY, lat REAL, lon REAL, names TEXT, cell INTEGER);
+CREATE TABLE pois (id INTEGER PRIMARY KEY, name TEXT, kind TEXT, lat REAL, lon REAL, cell INTEGER, address TEXT);
+CREATE TABLE addresses (number TEXT, street TEXT, city TEXT, postcode TEXT, lat REAL, lon REAL, cell INTEGER);
+CREATE TABLE areas (id INTEGER PRIMARY KEY, level TEXT, name TEXT,
+    minlat REAL, minlon REAL, maxlat REAL, maxlon REAL, geom BLOB);
+"""
+
+INDEXES = """
+CREATE INDEX street_cells_cell ON street_cells(cell);
+CREATE INDEX junctions_cell ON junctions(cell);
+CREATE INDEX pois_cell ON pois(cell);
+CREATE INDEX pois_name ON pois(name COLLATE NOCASE);
+CREATE INDEX addresses_cell ON addresses(cell);
+CREATE INDEX addresses_street ON addresses(street COLLATE NOCASE);
+CREATE INDEX streets_name ON streets(name COLLATE NOCASE);
+CREATE INDEX areas_box ON areas(minlat, maxlat);
+"""
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("pbf")
+    ap.add_argument("out")
+    ap.add_argument("--id", required=True)
+    ap.add_argument("--name", required=True)
+    args = ap.parse_args()
+
+    print("Pass 1: finding junctions", file=sys.stderr)
+    p1 = Pass1()
+    p1.apply_file(args.pbf)
+    junctions = p1.junction_nodes()
+    del p1
+    print(f"  {len(junctions)} junction nodes", file=sys.stderr)
+
+    db = sqlite3.connect(args.out)
+    db.executescript("PRAGMA journal_mode=OFF; PRAGMA synchronous=OFF; PRAGMA page_size=4096;")
+    db.executescript(SCHEMA)
+
+    print("Pass 2: streets, places, addresses, areas", file=sys.stderr)
+    p2 = Pass2(db, junctions)
+    p2.apply_file(args.pbf, locations=True, idx="flex_mem")
+    p2.flush(force=True)
+
+    rows = []
+    for i, pos in enumerate(p2.junction_pos):
+        if pos is None:
+            continue
+        names = sorted(p2.junction_names[i])
+        rows.append((i, pos[0], pos[1], "|".join(names), cell_of(pos[0], pos[1])))
+    db.executemany("INSERT INTO junctions VALUES (?,?,?,?,?)", rows)
+
+    # Neighborhoods mapped only as points become small round areas (about 600 m across).
+    for level, name, lat, lon in p2.place_nodes:
+        from shapely.geometry import Point
+        p2.areas.append((level, name, Point(lon, lat).buffer(0.004, quad_segs=4)))
+
+    arows = []
+    for i, (level, name, geom) in enumerate(p2.areas):
+        minx, miny, maxx, maxy = geom.bounds
+        arows.append((i + 1, level, name, miny, minx, maxy, maxx, pack_rings(geom)))
+    db.executemany("INSERT INTO areas VALUES (?,?,?,?,?,?,?,?)", arows)
+
+    b = p2.bbox
+    meta = {
+        "id": args.id, "name": args.name, "format": "1",
+        "minlat": b[0], "minlon": b[1], "maxlat": b[2], "maxlon": b[3],
+        "built": datetime.date.today().isoformat(),
+    }
+    db.executemany("INSERT INTO meta VALUES (?,?)", [(k, str(v)) for k, v in meta.items()])
+    db.executescript(INDEXES)
+    db.commit()
+    db.execute("VACUUM")
+    db.close()
+    counts = {t: sqlite3.connect(args.out).execute(f"SELECT COUNT(*) FROM {t}").fetchone()[0]
+              for t in ("streets", "junctions", "pois", "addresses", "areas")}
+    print("Done:", counts, file=sys.stderr)
+
+
+if __name__ == "__main__":
+    main()

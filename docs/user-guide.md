@@ -2,11 +2,17 @@
 
 Treker is a GPS app for blind people on Android. It tells you where you are as you move, lets you point your phone to hear what's around you, lets you walk the streets virtually, and guides you turn by turn walking, driving or by public transit.
 
+Treker works offline. Its maps come from OpenStreetMap and are downloaded to your phone, one region at a time, so live exploration, What's Around, map browsing, search and walking and driving guidance all work without an internet connection. Only public transit trips need the internet.
+
 There are five tabs across the bottom of the screen, from left to right: Explore, Map browsing, Routes, Favorites, and Help and settings.
 
 # Getting started
 
-The first time you open Treker, it asks for permission to use your location and to show notifications. Allow both. Live exploration starts straight away and keeps running when the screen is off or you're in another app. While it runs, Android shows a Treker notification. The notification has a Stop Treker button that stops GPS and live exploration until you open Treker again.
+The first time you open Treker, it asks for permission to use your location and to show notifications. Allow both.
+
+Next, download the map for your area. Go to the Help and settings tab, find Offline maps, and choose the map that says it covers where you are. Maps are large, so use Wi-Fi. You can keep using your phone while it downloads, and Treker says when the map is ready. If there's no map for where you are, the Explore tab says so and has a Get the offline map button.
+
+Live exploration starts straight away and keeps running when the screen is off or you're in another app. While it runs, Android shows a Treker notification. The notification has a Stop Treker button that stops GPS and live exploration until you open Treker again.
 
 # Explore tab
 
@@ -36,7 +42,7 @@ On the Explore tab, under Announce while moving, each piece of information live 
 - Direction of travel
 - Places you pass
 
-Country, state, county, city, neighborhood, zip code and street address are announced when they change. Street name is announced when you move onto a different street. Approaching intersections are announced when an intersection is ahead of you in the direction you're walking. Places you pass are announced when you come within about 35 meters of them.
+Country, state, county, city, neighborhood, zip code and street address are announced when they change. Street name is announced when you move onto a different street. Approaching intersections are announced when an intersection is ahead of you in the direction you're walking. Places you pass are announced when you come within about 35 meters of them. Everything is looked up in the offline map, so live exploration works without an internet connection.
 
 Recent announcements, at the bottom of the Explore tab, lists the last things Treker said, newest first.
 
@@ -76,9 +82,9 @@ Every place in Treker, whether a search result, a place nearby or a favorite, ha
 
 # Guidance
 
-Pedestrian and motorized guidance use Google's navigation, which follows your progress, reroutes you if you go off the route, and speaks each turn. The first time you start guidance, Google asks you to accept its navigation terms.
+Pedestrian and motorized guidance work offline. Treker says how far it is and about how long it takes, then tells you each turn twice: a heads-up before you reach it, and again when you're there. If you leave the route, Treker says Off route, recalculating, and makes a new route from where you are.
 
-Public transit guidance tells you each step: walk to the stop, which line to take and which way it's headed, how many stops to ride, and where to get off. When you've ridden away from the stop, Treker says so, warns you when your stop is coming up, and tells you when to get off.
+Public transit guidance needs the internet. It tells you each step: walk to the stop, which line to take and which way it's headed, when it leaves, how many stops to ride, and where to get off. Walks to and from stops are guided turn by turn. On the ride, Treker names each stop as you pass it, says when yours is next, and tells you when to get off.
 
 # Favorites tab
 
@@ -86,7 +92,11 @@ Save my current location saves where you are, named by its street address. Place
 
 # Help and settings tab
 
-At the top are Open user guide in browser and Open release notes in browser. Then the settings:
+At the top are Open user guide in browser and Open release notes in browser.
+
+Next is Offline maps. Maps you've downloaded each have a Delete button. Below them is every map you can download, with the one covering where you are first. Each says how big it is. A map you already have says Update instead, with the date it was built; updating gets the newest OpenStreetMap data.
+
+Then the settings:
 
 - Use meters instead of feet.
 - Directions as clock face. On, directions are like 2 o'clock, relative to the way you're walking or pointing. Off, directions are compass directions like northeast.
@@ -99,4 +109,6 @@ This user guide is also shown on this tab, below the settings.
 
 # Where the information comes from
 
-Places, search and navigation come from Google Maps. Streets and intersections come from OpenStreetMap, © OpenStreetMap contributors, available under the Open Database License. Your city, zip code and other address details come from your phone's own address lookup.
+Map data © OpenStreetMap contributors, available under the Open Database License. Streets, intersections, places, addresses and the areas you're in all come from OpenStreetMap. Routes are made on your phone by the Valhalla routing engine. Public transit trips come from Transitous, a free community service using open timetable data; its data sources are listed at transitous.org/sources, and the Help and settings tab has a button that opens that page.
+
+Because the information comes from OpenStreetMap, which volunteers keep up to date, some places or addresses may be missing, especially outside cities.

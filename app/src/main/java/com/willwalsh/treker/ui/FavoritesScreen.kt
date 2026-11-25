@@ -13,7 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.willwalsh.treker.TrekerApp
-import com.willwalsh.treker.data.AddressLookup
+import com.willwalsh.treker.data.Offline
 import com.willwalsh.treker.data.Geo
 import com.willwalsh.treker.data.Place
 import kotlinx.coroutines.launch
@@ -27,7 +27,7 @@ fun FavoritesScreen() {
             val fix = app.location.fix.value
             if (fix == null) { app.speaker.say("No GPS position yet.", true); return@BigButton }
             scope.launch {
-                val info = runCatching { AddressLookup.at(app, fix.pos) }.getOrNull()
+                val info = runCatching { Offline.areaInfo(fix.pos) }.getOrNull()
                 val name = info?.address ?: info?.street ?: "Saved spot ${app.favorites.items.size + 1}"
                 app.favorites.add(Place(name, fix.pos, info?.address.orEmpty(), "Saved location"))
                 app.speaker.say("Saved $name to favorites.", true)

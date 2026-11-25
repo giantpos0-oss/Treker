@@ -5,12 +5,10 @@ import androidx.compose.runtime.mutableStateOf
 import com.willwalsh.treker.DirectionStyle
 import com.willwalsh.treker.LiveItem
 import com.willwalsh.treker.TrekerApp
-import com.willwalsh.treker.data.AddressLookup
 import com.willwalsh.treker.data.AreaInfo
 import com.willwalsh.treker.data.Geo
-import com.willwalsh.treker.data.GoogleKeyMissing
-import com.willwalsh.treker.data.GooglePlaces
 import com.willwalsh.treker.data.LatLon
+import com.willwalsh.treker.data.Offline
 import com.willwalsh.treker.data.Place
 import com.willwalsh.treker.data.StreetMap
 import com.willwalsh.treker.location.Fix
@@ -44,12 +42,20 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
     private var streetJob: Job? = null
     private var placesJob: Job? = null
     private var lastPlacesAt: LatLon? = null
-    private var placesKeyWarned = false
+    private var noMapWarned = false
 
     fun onFix(fix: Fix) {
         status.value = if (fix.accuracy > 40) "GPS is weak, accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.metric)}"
         else "GPS ready"
         if (!settings.liveExploration) return
+        if (!Offline.hasMapFor(fix.pos)) {
+            if (!noMapWarned) {
+                noMapWarned = true
+                say("There's no offline map for where you are. Download one in Help and settings, under Offline maps.")
+            }
+            return
+        }
+        noMapWarned = false
         checkArea(fix)
         checkStreets(fix)
         checkHeading(fix)
@@ -62,7 +68,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         app.speaker.say(text)
     }
 
-    // Country, state, county, city, neighborhood, zip and address, from the phone's free address lookup.
+    // Country, state, county, city, neighborhood, zip and address, from the offline map.
     private fun checkArea(fix: Fix) {
         val now = System.currentTimeMillis()
         val moved = lastLookupAt?.let { Geo.distance(it, fix.pos) } ?: Double.MAX_VALUE
@@ -71,7 +77,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         if (now - lastLookupTime < 4_000) return
         lastLookupAt = fix.pos; lastLookupTime = now
         lookupJob = scope.launch {
-            val info = runCatching { AddressLookup.at(app, fix.pos) }.getOrNull() ?: return@launch
+            val info = runCatching { Offline.areaInfo(fix.pos, StreetMap.around(fix.pos)) }.getOrNull() ?: return@launch
             area.value = info
             val old = announcedArea
             announcedArea = info
@@ -133,15 +139,14 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         }
     }
 
-    // Places you pass: businesses and landmarks close by, from Google (cached by area).
+    // Places you pass: businesses and landmarks close by, from the offline map.
     private fun checkPlaces(fix: Fix) {
         if (!settings.isOn(LiveItem.PLACES) || placesJob?.isActive == true) return
         val last = lastPlacesAt
         if (last != null && Geo.distance(last, fix.pos) < 10) return
         lastPlacesAt = fix.pos
         placesJob = scope.launch {
-            val places = try { GooglePlaces.nearby(fix.pos, maxOf(settings.placesRadius.toDouble(), 300.0)) }
-            catch (e: GoogleKeyMissing) { return@launch } catch (e: Exception) { return@launch }
+            val places = try { Offline.pois(fix.pos, 60.0) } catch (e: Exception) { return@launch }
             val now = System.currentTimeMillis()
             val close = places.map { it to Geo.distance(fix.pos, it.pos) }.filter { it.second < 35 }.sortedBy { it.second }
             for ((p, d) in close.take(2)) {
@@ -180,7 +185,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
     /** The nearest intersection, for the "Nearest intersection" button. */
     suspend fun nearestIntersection(): String {
         val fix = app.location.fix.value ?: return "No GPS position yet."
-        val map = StreetMap.around(fix.pos) ?: return "Couldn't get street information. Check your internet connection."
+        val map = StreetMap.around(fix.pos) ?: return "There's no offline map for where you are."
         val i = map.intersections.minByOrNull { Geo.distance(fix.pos, it.pos) } ?: return "No intersections nearby."
         return "${i.spoken()}, ${direction(fix, i.pos)}, ${Geo.distanceWords(Geo.distance(fix.pos, i.pos), settings.metric)}"
     }
@@ -188,7 +193,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
     /** Places around you, nearest first, for the list on the Explore tab. */
     suspend fun nearbyPlaces(): List<Pair<Place, Double>> {
         val fix = app.location.fix.value ?: return emptyList()
-        return GooglePlaces.nearby(fix.pos, settings.placesRadius.toDouble().coerceAtLeast(100.0))
-            .map { it to Geo.distance(fix.pos, it.pos) }.sortedBy { it.second }
+        return Offline.pois(fix.pos, settings.placesRadius.toDouble().coerceAtLeast(100.0))
+            .map { it to Geo.distance(fix.pos, it.pos) }
     }
 }

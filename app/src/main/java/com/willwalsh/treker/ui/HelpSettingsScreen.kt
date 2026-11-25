@@ -21,7 +21,6 @@ import androidx.compose.ui.unit.sp
 import com.willwalsh.treker.BuildConfig
 import com.willwalsh.treker.DirectionStyle
 import com.willwalsh.treker.TrekerApp
-import com.willwalsh.treker.data.GooglePlaces
 
 private const val REPO = "https://github.com/giantpos0-oss/Treker/blob/main/docs"
 
@@ -39,8 +38,9 @@ fun HelpSettingsScreen() {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
         BigButton("Open user guide in browser") { open("$REPO/user-guide.md") }
         BigButton("Open release notes in browser") { open("$REPO/release-notes.md") }
-        Text("Treker version ${BuildConfig.VERSION_NAME}" +
-            if (GooglePlaces.hasKey) "" else ". Google key not set up in this build.", fontSize = 16.sp)
+        Text("Treker version ${BuildConfig.VERSION_NAME}", fontSize = 16.sp)
+
+        OfflineMapsSection()
 
         Heading("Settings")
         SwitchRow("Use meters instead of feet", s.metric) { s.metric = it }
@@ -69,8 +69,9 @@ fun HelpSettingsScreen() {
         GuideText(guide)
 
         Heading("Map data")
-        Text("Places, search and navigation from Google Maps. Streets and intersections © OpenStreetMap contributors, " +
-            "available under the Open Database License.", fontSize = 16.sp)
+        Text("Map data © OpenStreetMap contributors, available under the Open Database License. " +
+            "Routes by Valhalla. Public transit trips by Transitous, transitous.org, from open timetable data.", fontSize = 16.sp)
+        BigButton("Transitous data sources") { open("https://transitous.org/sources/") }
     }
 }
 

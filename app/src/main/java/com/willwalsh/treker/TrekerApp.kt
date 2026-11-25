@@ -3,7 +3,7 @@ package com.willwalsh.treker
 import android.app.Application
 import com.willwalsh.treker.browse.VirtualWalker
 import com.willwalsh.treker.data.Favorites
-import com.willwalsh.treker.data.SigningCert
+import com.willwalsh.treker.data.Offline
 import com.willwalsh.treker.explore.LiveExplorer
 import com.willwalsh.treker.explore.WhatsAround
 import com.willwalsh.treker.location.Compass
@@ -30,6 +30,7 @@ class TrekerApp : Application() {
     override fun onCreate() {
         super.onCreate()
         settings = Settings(this)
+        Offline.init(this)
         speaker = Speaker(this).also { it.rate = settings.speechRate }
         location = LocationHub(this)
         compass = Compass(this)
@@ -38,6 +39,5 @@ class TrekerApp : Application() {
         whatsAround = WhatsAround(this, scope)
         walker = VirtualWalker(this)
         guidance = Guidance(this, scope)
-        SigningCert.load(this)
     }
 }

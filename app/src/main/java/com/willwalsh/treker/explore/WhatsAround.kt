@@ -3,8 +3,7 @@ package com.willwalsh.treker.explore
 import androidx.compose.runtime.mutableStateOf
 import com.willwalsh.treker.TrekerApp
 import com.willwalsh.treker.data.Geo
-import com.willwalsh.treker.data.GoogleKeyMissing
-import com.willwalsh.treker.data.GooglePlaces
+import com.willwalsh.treker.data.Offline
 import com.willwalsh.treker.data.LatLon
 import com.willwalsh.treker.data.StreetMap
 import kotlinx.coroutines.CoroutineScope
@@ -15,7 +14,7 @@ import kotlinx.coroutines.launch
 
 /**
  * What's Around: point the top of the phone in a direction to hear the places and intersections
- * that way. Places come from Google once per area and are kept, so pointing around costs nothing.
+ * that way. Everything comes from the offline map.
  */
 class WhatsAround(private val app: TrekerApp, private val scope: CoroutineScope) {
     private data class Target(val key: String, val name: String, val pos: LatLon)
@@ -35,7 +34,6 @@ class WhatsAround(private val app: TrekerApp, private val scope: CoroutineScope)
             var loadedAt: LatLon? = null
             var lastKey: String? = null
             var lastSpoke = 0L
-            var keyWarned = false
             while (isActive) {
                 val fix = app.location.fix.value
                 val heading = app.compass.heading.value
@@ -44,10 +42,10 @@ class WhatsAround(private val app: TrekerApp, private val scope: CoroutineScope)
                     val radius = app.settings.placesRadius.toDouble()
                     val list = ArrayList<Target>()
                     try {
-                        GooglePlaces.nearby(fix.pos, maxOf(radius, 300.0)).forEach { list.add(Target(it.placeId ?: it.name, it.name, it.pos)) }
-                    } catch (e: GoogleKeyMissing) {
-                        if (!keyWarned) { keyWarned = true; app.speaker.say("Places need Treker's Google key. Intersections only for now.") }
-                    } catch (e: Exception) { }
+                        Offline.pois(fix.pos, radius + 50).forEach { list.add(Target(it.placeId ?: it.name, it.name, it.pos)) }
+                    } catch (e: Exception) {
+                        app.speaker.say(e.message ?: "No offline map here.")
+                    }
                     StreetMap.around(fix.pos)?.intersections?.forEach { list.add(Target("i${it.node}", it.spoken(), it.pos)) }
                     targets = list
                 }

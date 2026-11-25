@@ -4,11 +4,6 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose")
 }
 
-// Treker's Google Maps Platform key comes from the GitHub secret TREKER_GOOGLE_KEY at build time.
-// It is never committed. Without it the app still builds: live exploration and map browsing work
-// (they use the phone's own address lookup and OpenStreetMap), and Google features say the key is missing.
-val googleKey: String = System.getenv("TREKER_GOOGLE_KEY") ?: ""
-
 android {
     namespace = "com.willwalsh.treker"
     compileSdk = 36
@@ -19,8 +14,6 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
-        manifestPlaceholders["MAPS_API_KEY"] = googleKey
-        buildConfigField("String", "GOOGLE_KEY", "\"$googleKey\"")
     }
 
     // Release builds are signed with Treker's own key (GitHub secret TREKER_SIGNING), so every new
@@ -49,7 +42,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
-        isCoreLibraryDesugaringEnabled = true
     }
     buildFeatures {
         compose = true
@@ -75,12 +67,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.0")
     implementation("androidx.lifecycle:lifecycle-service:2.9.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.10.2")
 
-    implementation("com.google.android.gms:play-services-location:21.3.0")
-
-    // Google's turn-by-turn engine for walking and driving. It includes the Maps SDK,
-    // so the Maps SDK must not be added separately.
-    implementation("com.google.android.libraries.navigation:navigation:7.9.0")
-    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
+    // Valhalla routing engine, running on the phone against the downloaded map's routing tiles.
+    implementation("io.github.rallista:valhalla-mobile:0.6.1")
 }

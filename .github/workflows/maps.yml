@@ -1,0 +1,96 @@
+# Builds an offline map for one region from OpenStreetMap and publishes it on the "maps" release.
+# Run it from the Actions tab ("Build offline map"), naming a Geofabrik extract, for example
+# path "north-america/us/illinois", id "us-illinois", name "Illinois", group "United States".
+name: Build offline map
+
+on:
+  workflow_dispatch:
+    inputs:
+      path:
+        description: Geofabrik extract path, without -latest.osm.pbf
+        required: true
+      id:
+        description: Short id for the map, e.g. us-illinois
+        required: true
+      name:
+        description: Name people see, e.g. Illinois
+        required: true
+      group:
+        description: Group in the list, e.g. United States
+        required: true
+        default: United States
+
+permissions:
+  contents: write
+
+concurrency:
+  group: maps-catalog
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 300
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Free disk space
+        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h .
+
+      - name: Download OpenStreetMap extract
+        run: |
+          mkdir -p work
+          curl -fL --retry 3 -o work/region.osm.pbf "https://download.geofabrik.de/${{ inputs.path }}-latest.osm.pbf"
+          ls -la work
+
+      - name: Build street database
+        run: |
+          pip install osmium shapely numpy
+          python3 tools/build_region.py work/region.osm.pbf "work/${{ inputs.id }}.db" --id "${{ inputs.id }}" --name "${{ inputs.name }}"
+          gzip -9 -k "work/${{ inputs.id }}.db"
+
+      - name: Build routing tiles with Valhalla
+        run: |
+          img=ghcr.io/valhalla/valhalla:3.6.3
+          docker pull "$img" || { img=ghcr.io/valhalla/valhalla:latest; docker pull "$img"; }
+          echo "Using $img"
+          docker run --rm -v "$PWD/work:/data" -w /data --entrypoint /bin/bash "$img" -c '
+            set -e
+            valhalla_build_config --mjolnir-tile-dir /data/tiles --mjolnir-tile-extract /data/tiles.tar > /data/valhalla.json
+            valhalla_build_tiles -c /data/valhalla.json /data/region.osm.pbf
+            valhalla_build_extract -c /data/valhalla.json -v --overwrite
+          '
+          sudo chown -R "$USER" work
+          gzip -6 -c work/tiles.tar > "work/${{ inputs.id }}.tar.gz"
+          rm -rf work/tiles work/tiles.tar
+          ls -la work
+
+      - name: Publish on the maps release and update the catalog
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ID: ${{ inputs.id }}
+          NAME: ${{ inputs.name }}
+          GROUP: ${{ inputs.group }}
+        run: |
+          repo="${{ github.repository }}"
+          gh release view maps >/dev/null 2>&1 || gh release create maps --title "Offline maps" --notes "Offline maps for Treker, built from OpenStreetMap (© OpenStreetMap contributors, ODbL). Download them from inside Treker." --latest=false
+          gh release upload maps "work/$ID.db.gz" "work/$ID.tar.gz" --clobber
+          gh release download maps -p regions.json -D work 2>/dev/null || echo '{"regions":[]}' > work/regions.json
+          python3 - <<'EOF'
+          import json, os, sqlite3, datetime
+          rid, name, group, repo = os.environ["ID"], os.environ["NAME"], os.environ["GROUP"], os.environ["GITHUB_REPOSITORY"]
+          meta = dict(sqlite3.connect(f"work/{rid}.db").execute("SELECT key, value FROM meta").fetchall())
+          base = f"https://github.com/{repo}/releases/download/maps"
+          entry = {
+              "id": rid, "name": name, "group": group, "built": datetime.date.today().isoformat(),
+              "bbox": [float(meta["minlat"]), float(meta["minlon"]), float(meta["maxlat"]), float(meta["maxlon"])],
+              "db": {"url": f"{base}/{rid}.db.gz", "size": os.path.getsize(f"work/{rid}.db.gz")},
+              "tiles": {"url": f"{base}/{rid}.tar.gz", "size": os.path.getsize(f"work/{rid}.tar.gz")},
+          }
+          cat = json.load(open("work/regions.json"))
+          cat["regions"] = [r for r in cat["regions"] if r["id"] != rid] + [entry]
+          json.dump(cat, open("work/regions.json", "w"), indent=1)
+          print(json.dumps(entry, indent=1))
+          EOF
+          gh release upload maps work/regions.json --clobber
+          echo "::notice title=Map published::$NAME is in the catalog."

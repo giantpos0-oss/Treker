@@ -21,8 +21,9 @@ Writing style for both files: plain English for blind users, short paragraphs, `
 `-` bullet points only. No tables, no images, no nested lists, no HTML. Bold, code marks and
 links are stripped by the in-app reader, so don't rely on them for meaning.
 
-## Google key
+## Map data
 
-The Google Maps Platform key is the GitHub secret TREKER_GOOGLE_KEY, read at build time
-(app/build.gradle.kts). Never commit it. Every Google call costs money: cache results, and keep
-street names and intersections on OpenStreetMap and addresses on the phone's own Geocoder.
+Treker is fully OpenStreetMap and offline. tools/build_region.py builds a region's street
+database; .github/workflows/maps.yml builds it plus Valhalla routing tiles and publishes both on
+the "maps" release with regions.json as the catalog. Public transit uses Transitous (online,
+non-commercial, open-source apps only, send a User-Agent with contact info). No Google services.
