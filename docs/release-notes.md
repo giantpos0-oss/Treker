@@ -11,4 +11,5 @@ The first build of Treker. Everything runs on OpenStreetMap and works offline, e
 - Routes: search for an address or place in one field, then start pedestrian, motorized or public transit guidance, explore it virtually, or add it to favorites.
 - Favorites, including saving where you are.
 - Offline maps: download your area's map in Help and settings. Walking and driving routes are made on your phone by Valhalla and recalculated when you go off route.
+- Offline maps for every U.S. state, Washington D.C., Puerto Rico and the U.S. Virgin Islands, refreshed monthly.
 - Public transit trips from Transitous, with each stop named as you pass it.

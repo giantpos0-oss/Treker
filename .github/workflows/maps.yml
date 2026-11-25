@@ -1,53 +1,93 @@
-# Builds an offline map for one region from OpenStreetMap and publishes it on the "maps" release.
-# Run it from the Actions tab ("Build offline map"), naming a Geofabrik extract, for example
-# path "north-america/us/illinois", id "us-illinois", name "Illinois", group "United States".
-name: Build offline map
+# Builds Treker's offline maps from OpenStreetMap and publishes them on the "maps" release.
+#
+# From the Actions tab, run "Build offline maps":
+#   - leave "only" empty to build every U.S. region in tools/us-regions.json (all 50 states,
+#     Washington D.C., Puerto Rico and the U.S. Virgin Islands), or
+#   - put one id from that file in "only", e.g. us-texas, to rebuild just that one.
+# It also runs by itself on the 1st of each month so maps stay current.
+#
+# Each region is a street database (tools/build_region.py) plus Valhalla routing tiles.
+# The last job rebuilds regions.json, the catalog Treker reads, from every published region.
+name: Build offline maps
 
 on:
   workflow_dispatch:
     inputs:
-      path:
-        description: Geofabrik extract path, without -latest.osm.pbf
-        required: true
-      id:
-        description: Short id for the map, e.g. us-illinois
-        required: true
-      name:
-        description: Name people see, e.g. Illinois
-        required: true
-      group:
-        description: Group in the list, e.g. United States
-        required: true
-        default: United States
+      only:
+        description: One region id to build (empty builds all U.S. regions)
+        required: false
+        default: ""
+  schedule:
+    - cron: "17 7 1 * *"
 
 permissions:
   contents: write
 
 concurrency:
-  group: maps-catalog
+  group: maps
   cancel-in-progress: false
 
 jobs:
-  build:
+  plan:
     runs-on: ubuntu-latest
-    timeout-minutes: 300
+    outputs:
+      regions: ${{ steps.pick.outputs.regions }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: pick
+        env:
+          ONLY: ${{ inputs.only }}
+        run: |
+          python3 - <<'EOF' >> "$GITHUB_OUTPUT"
+          import json, os
+          regions = json.load(open("tools/us-regions.json"))
+          only = (os.environ.get("ONLY") or "").strip()
+          if only:
+              regions = [r for r in regions if r["id"] == only]
+              if not regions:
+                  raise SystemExit(f"No region with id {only} in tools/us-regions.json")
+          print("regions=" + json.dumps(regions))
+          EOF
+      - name: Make sure the maps release exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release view maps >/dev/null 2>&1 || gh release create maps --title "Offline maps" --latest=false \
+            --notes "Offline maps for Treker, built from OpenStreetMap (© OpenStreetMap contributors, ODbL). Download them from inside Treker, in Help and settings, under Offline maps."
+
+  build:
+    needs: plan
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        region: ${{ fromJson(needs.plan.outputs.regions) }}
+    name: ${{ matrix.region.name }}
+    env:
+      ID: ${{ matrix.region.id }}
+      NAME: ${{ matrix.region.name }}
+      GROUP: ${{ matrix.region.group }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Free disk space
-        run: sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL && df -h .
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL /usr/local/share/boost
+          df -h .
 
       - name: Download OpenStreetMap extract
         run: |
           mkdir -p work
-          curl -fL --retry 3 -o work/region.osm.pbf "https://download.geofabrik.de/${{ inputs.path }}-latest.osm.pbf"
+          curl -fL --retry 5 --retry-delay 20 -o work/region.osm.pbf "https://download.geofabrik.de/${{ matrix.region.path }}-latest.osm.pbf"
           ls -la work
 
       - name: Build street database
         run: |
           pip install osmium shapely numpy
-          python3 tools/build_region.py work/region.osm.pbf "work/${{ inputs.id }}.db" --id "${{ inputs.id }}" --name "${{ inputs.name }}"
-          gzip -9 -k "work/${{ inputs.id }}.db"
+          python3 tools/build_region.py work/region.osm.pbf "work/$ID.db" --id "$ID" --name "$NAME"
+          gzip -6 -c "work/$ID.db" > "work/$ID.db.gz"
 
       - name: Build routing tiles with Valhalla
         run: |
@@ -61,36 +101,50 @@ jobs:
             valhalla_build_extract -c /data/valhalla.json -v --overwrite
           '
           sudo chown -R "$USER" work
-          gzip -6 -c work/tiles.tar > "work/${{ inputs.id }}.tar.gz"
-          rm -rf work/tiles work/tiles.tar
+          rm -rf work/tiles work/region.osm.pbf
+          gzip -6 -c work/tiles.tar > "work/$ID.tar.gz"
+          rm -f work/tiles.tar
           ls -la work
 
-      - name: Publish on the maps release and update the catalog
+      - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
-          ID: ${{ inputs.id }}
-          NAME: ${{ inputs.name }}
-          GROUP: ${{ inputs.group }}
         run: |
-          repo="${{ github.repository }}"
-          gh release view maps >/dev/null 2>&1 || gh release create maps --title "Offline maps" --notes "Offline maps for Treker, built from OpenStreetMap (© OpenStreetMap contributors, ODbL). Download them from inside Treker." --latest=false
-          gh release upload maps "work/$ID.db.gz" "work/$ID.tar.gz" --clobber
-          gh release download maps -p regions.json -D work 2>/dev/null || echo '{"regions":[]}' > work/regions.json
           python3 - <<'EOF'
           import json, os, sqlite3, datetime
-          rid, name, group, repo = os.environ["ID"], os.environ["NAME"], os.environ["GROUP"], os.environ["GITHUB_REPOSITORY"]
+          rid, repo = os.environ["ID"], os.environ["GITHUB_REPOSITORY"]
           meta = dict(sqlite3.connect(f"work/{rid}.db").execute("SELECT key, value FROM meta").fetchall())
           base = f"https://github.com/{repo}/releases/download/maps"
           entry = {
-              "id": rid, "name": name, "group": group, "built": datetime.date.today().isoformat(),
+              "id": rid, "name": os.environ["NAME"], "group": os.environ["GROUP"],
+              "built": datetime.date.today().isoformat(),
               "bbox": [float(meta["minlat"]), float(meta["minlon"]), float(meta["maxlat"]), float(meta["maxlon"])],
               "db": {"url": f"{base}/{rid}.db.gz", "size": os.path.getsize(f"work/{rid}.db.gz")},
               "tiles": {"url": f"{base}/{rid}.tar.gz", "size": os.path.getsize(f"work/{rid}.tar.gz")},
           }
-          cat = json.load(open("work/regions.json"))
-          cat["regions"] = [r for r in cat["regions"] if r["id"] != rid] + [entry]
-          json.dump(cat, open("work/regions.json", "w"), indent=1)
+          json.dump(entry, open(f"work/{rid}.region.json", "w"))
           print(json.dumps(entry, indent=1))
           EOF
-          gh release upload maps work/regions.json --clobber
-          echo "::notice title=Map published::$NAME is in the catalog."
+          for f in "work/$ID.db.gz" "work/$ID.tar.gz" "work/$ID.region.json"; do
+            gh release upload maps "$f" --clobber || { sleep 30; gh release upload maps "$f" --clobber; }
+          done
+
+  catalog:
+    needs: build
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Rebuild regions.json from every published region
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p cat && cd cat
+          gh release download maps -R "${{ github.repository }}" -p "*.region.json"
+          python3 - <<'EOF'
+          import glob, json
+          regions = [json.load(open(f)) for f in sorted(glob.glob("*.region.json"))]
+          json.dump({"regions": regions}, open("regions.json", "w"), indent=1)
+          print(f"{len(regions)} regions in the catalog")
+          EOF
+          gh release upload maps regions.json -R "${{ github.repository }}" --clobber
+          echo "::notice title=Maps catalog::$(python3 -c 'import json;print(len(json.load(open("regions.json"))["regions"]))') regions available in Treker."

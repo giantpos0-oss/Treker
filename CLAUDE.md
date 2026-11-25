@@ -24,6 +24,7 @@ links are stripped by the in-app reader, so don't rely on them for meaning.
 ## Map data
 
 Treker is fully OpenStreetMap and offline. tools/build_region.py builds a region's street
-database; .github/workflows/maps.yml builds it plus Valhalla routing tiles and publishes both on
-the "maps" release with regions.json as the catalog. Public transit uses Transitous (online,
+database; .github/workflows/maps.yml builds every region in tools/us-regions.json (or one, via
+the "only" input) plus Valhalla routing tiles, publishes them on the "maps" release, and rebuilds
+regions.json, the catalog the app reads. Runs monthly. License: GPL-3.0. Public transit uses Transitous (online,
 non-commercial, open-source apps only, send a User-Agent with contact info). No Google services.

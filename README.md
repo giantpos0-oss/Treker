@@ -8,4 +8,6 @@ See docs/user-guide.md for how to use it and docs/release-notes.md for what chan
 
 Everything is OpenStreetMap and works offline: maps are downloaded per region from this repo's "maps" release (built by the "Build offline map" workflow), and routes are made on the phone with Valhalla. Public transit trips come from Transitous (transitous.org).
 
-Map data © OpenStreetMap contributors, available under the Open Database License.
+Offline maps are available for all 50 states, Washington D.C., Puerto Rico and the U.S. Virgin Islands, rebuilt monthly by the "Build offline maps" workflow (regions are listed in tools/us-regions.json).
+
+Treker is free software, licensed under the GNU General Public License version 3 (see LICENSE). Map data © OpenStreetMap contributors, available under the Open Database License.

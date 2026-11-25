@@ -1,0 +1,320 @@
+[
+ {
+  "path": "north-america/us/texas",
+  "id": "us-texas",
+  "name": "Texas",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/alabama",
+  "id": "us-alabama",
+  "name": "Alabama",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/alaska",
+  "id": "us-alaska",
+  "name": "Alaska",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/arizona",
+  "id": "us-arizona",
+  "name": "Arizona",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/arkansas",
+  "id": "us-arkansas",
+  "name": "Arkansas",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/california",
+  "id": "us-california",
+  "name": "California",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/colorado",
+  "id": "us-colorado",
+  "name": "Colorado",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/connecticut",
+  "id": "us-connecticut",
+  "name": "Connecticut",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/delaware",
+  "id": "us-delaware",
+  "name": "Delaware",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/district-of-columbia",
+  "id": "us-district-of-columbia",
+  "name": "Washington, D.C.",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/florida",
+  "id": "us-florida",
+  "name": "Florida",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/georgia",
+  "id": "us-georgia",
+  "name": "Georgia",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/hawaii",
+  "id": "us-hawaii",
+  "name": "Hawaii",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/idaho",
+  "id": "us-idaho",
+  "name": "Idaho",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/illinois",
+  "id": "us-illinois",
+  "name": "Illinois",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/indiana",
+  "id": "us-indiana",
+  "name": "Indiana",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/iowa",
+  "id": "us-iowa",
+  "name": "Iowa",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/kansas",
+  "id": "us-kansas",
+  "name": "Kansas",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/kentucky",
+  "id": "us-kentucky",
+  "name": "Kentucky",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/louisiana",
+  "id": "us-louisiana",
+  "name": "Louisiana",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/maine",
+  "id": "us-maine",
+  "name": "Maine",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/maryland",
+  "id": "us-maryland",
+  "name": "Maryland",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/massachusetts",
+  "id": "us-massachusetts",
+  "name": "Massachusetts",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/michigan",
+  "id": "us-michigan",
+  "name": "Michigan",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/minnesota",
+  "id": "us-minnesota",
+  "name": "Minnesota",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/mississippi",
+  "id": "us-mississippi",
+  "name": "Mississippi",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/missouri",
+  "id": "us-missouri",
+  "name": "Missouri",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/montana",
+  "id": "us-montana",
+  "name": "Montana",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/nebraska",
+  "id": "us-nebraska",
+  "name": "Nebraska",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/nevada",
+  "id": "us-nevada",
+  "name": "Nevada",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/new-hampshire",
+  "id": "us-new-hampshire",
+  "name": "New Hampshire",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/new-jersey",
+  "id": "us-new-jersey",
+  "name": "New Jersey",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/new-mexico",
+  "id": "us-new-mexico",
+  "name": "New Mexico",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/new-york",
+  "id": "us-new-york",
+  "name": "New York",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/north-carolina",
+  "id": "us-north-carolina",
+  "name": "North Carolina",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/north-dakota",
+  "id": "us-north-dakota",
+  "name": "North Dakota",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/ohio",
+  "id": "us-ohio",
+  "name": "Ohio",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/oklahoma",
+  "id": "us-oklahoma",
+  "name": "Oklahoma",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/oregon",
+  "id": "us-oregon",
+  "name": "Oregon",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/pennsylvania",
+  "id": "us-pennsylvania",
+  "name": "Pennsylvania",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/rhode-island",
+  "id": "us-rhode-island",
+  "name": "Rhode Island",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/south-carolina",
+  "id": "us-south-carolina",
+  "name": "South Carolina",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/south-dakota",
+  "id": "us-south-dakota",
+  "name": "South Dakota",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/tennessee",
+  "id": "us-tennessee",
+  "name": "Tennessee",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/utah",
+  "id": "us-utah",
+  "name": "Utah",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/vermont",
+  "id": "us-vermont",
+  "name": "Vermont",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/virginia",
+  "id": "us-virginia",
+  "name": "Virginia",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/washington",
+  "id": "us-washington",
+  "name": "Washington",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/west-virginia",
+  "id": "us-west-virginia",
+  "name": "West Virginia",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/wisconsin",
+  "id": "us-wisconsin",
+  "name": "Wisconsin",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/wyoming",
+  "id": "us-wyoming",
+  "name": "Wyoming",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/puerto-rico",
+  "id": "us-puerto-rico",
+  "name": "Puerto Rico",
+  "group": "United States"
+ },
+ {
+  "path": "north-america/us/us-virgin-islands",
+  "id": "us-us-virgin-islands",
+  "name": "U.S. Virgin Islands",
+  "group": "United States"
+ }
+]
