@@ -192,6 +192,10 @@ private fun AnnouncementSettings() {
     SwitchRow("Announce when the GPS signal turns weak or good again", s.announceGps) { s.announceGps = it }
     Text("Announce while moving", fontSize = 19.sp, modifier = Modifier.padding(top = 14.dp, bottom = 4.dp))
     for (item in LiveItem.entries) SwitchRow(item.label, s.isOn(item)) { s.set(item, it) }
+
+    Text("Announce while guiding", fontSize = 19.sp, modifier = Modifier.padding(top = 14.dp, bottom = 4.dp))
+    Text("Used instead of the ones above while route guidance is running.", fontSize = 16.sp)
+    for (item in LiveItem.entries) SwitchRow(item.label, s.isOn(item, guiding = true)) { s.set(item, it, guiding = true) }
 }
 
 @Composable

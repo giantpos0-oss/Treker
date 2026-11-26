@@ -30,6 +30,19 @@ class TrekerApp : Application() {
     lateinit var walker: VirtualWalker
     lateinit var guidance: Guidance
 
+    /** Pause or resume live exploration and route guidance together. */
+    fun togglePause() {
+        settings.liveExploration = !settings.liveExploration
+        if (!settings.liveExploration) {
+            speaker.stop()
+            speaker.say("Paused.", true)
+        } else {
+            speaker.say("Resumed.", true)
+            // Back on a route: say where things stand straight away.
+            if (guidance.active.value) guidance.repeat()
+        }
+    }
+
     override fun onCreate() {
         super.onCreate()
         settings = Settings(this)

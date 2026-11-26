@@ -115,16 +115,16 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
             val parts = ArrayList<String>()
             val v = settings.areaVerbosity
             fun changed(item: LiveItem, new: String?, prev: String?, detailed: String) {
-                if (settings.isOn(item) && !new.isNullOrBlank() && new != prev) parts.add(if (v == Verbosity.DETAILED) detailed else new)
+                if (on(item) && !new.isNullOrBlank() && new != prev) parts.add(if (v == Verbosity.DETAILED) detailed else new)
             }
             changed(LiveItem.COUNTRY, info.country, old?.country, "Entering ${info.country}")
             changed(LiveItem.STATE, info.state, old?.state, "Entering the state of ${info.state}")
             changed(LiveItem.COUNTY, info.county, old?.county, "Entering ${info.county}")
             changed(LiveItem.CITY, info.city, old?.city, "Entering ${info.city}")
             changed(LiveItem.NEIGHBORHOOD, info.neighborhood, old?.neighborhood, "Neighborhood: ${info.neighborhood}")
-            if (settings.isOn(LiveItem.ZIP) && !info.zip.isNullOrBlank() && info.zip != old?.zip)
+            if (on(LiveItem.ZIP) && !info.zip.isNullOrBlank() && info.zip != old?.zip)
                 parts.add(if (v == Verbosity.BRIEF) spellZip(info.zip) else "zip code ${spellZip(info.zip)}")
-            if (settings.isOn(LiveItem.ADDRESS) && !gpsWeak && !info.address.isNullOrBlank() && info.address != old?.address)
+            if (on(LiveItem.ADDRESS) && !gpsWeak && !info.address.isNullOrBlank() && info.address != old?.address)
                 parts.add(if (v == Verbosity.BRIEF) info.address else "near ${info.address}")
             if (parts.isNotEmpty()) say(parts.joinToString(", "))
             if (street.value == null && !info.street.isNullOrBlank()) street.value = info.street
@@ -136,13 +136,13 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
     // Street names and intersections, from OpenStreetMap.
     private fun checkStreets(fix: Fix) {
         if (streetJob?.isActive == true) return
-        if (!settings.isOn(LiveItem.STREET) && !settings.isOn(LiveItem.INTERSECTIONS)) return
+        if (!on(LiveItem.STREET) && !on(LiveItem.INTERSECTIONS)) return
         streetJob = scope.launch {
             val map = StreetMap.around(fix.pos) ?: return@launch
             // With a weak GPS signal, Treker stays quiet about streets and intersections rather
             // than risk naming the wrong one.
             if (gpsWeak) return@launch
-            if (settings.isOn(LiveItem.STREET)) {
+            if (on(LiveItem.STREET)) {
                 val near = map.nearestStreet(fix.pos, fix.course)
                 val name = near?.takeIf { it.second < 20 + fix.accuracy / 2 }?.first?.name
                 if (name != null && name != street.value) {
@@ -158,7 +158,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
                     }
                 }
             }
-            if (settings.isOn(LiveItem.INTERSECTIONS)) {
+            if (on(LiveItem.INTERSECTIONS)) {
                 val course = fix.course ?: return@launch
                 val now = System.currentTimeMillis()
                 val ahead = map.clusters
@@ -184,6 +184,9 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         }
     }
 
+    /** Whether [item] is switched on, using the route guidance switches while guidance is running. */
+    private fun on(item: LiveItem) = settings.isOn(item, app.guidance.active.value)
+
     /** Joins the parts of an announcement with commas, skipping any that are empty. */
     private fun words(vararg parts: String) = parts.filter { it.isNotBlank() }.joinToString(", ")
 
@@ -203,7 +206,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
 
     // Places you pass: businesses and landmarks close by, from the offline map.
     private fun checkPlaces(fix: Fix) {
-        if (!settings.isOn(LiveItem.PLACES) || placesJob?.isActive == true || gpsWeak) return
+        if (!on(LiveItem.PLACES) || placesJob?.isActive == true || gpsWeak) return
         val last = lastPlacesAt
         if (last != null && Geo.distance(last, fix.pos) < 10) return
         lastPlacesAt = fix.pos

@@ -74,13 +74,17 @@ class Settings(context: Context) {
     private val liveStates = LiveItem.entries.associateWith {
         mutableStateOf(prefs.getBoolean("live_${it.key}", it.defaultOn))
     }
-    fun isOn(item: LiveItem) = liveStates.getValue(item).value
-    fun set(item: LiveItem, on: Boolean) {
-        liveStates.getValue(item).value = on
-        prefs.edit().putBoolean("live_${item.key}", on).apply()
+    /** The same switches, kept separately for while route guidance is running. */
+    private val guideStates = LiveItem.entries.associateWith {
+        mutableStateOf(prefs.getBoolean("guide_${it.key}", it.defaultOn))
+    }
+    fun isOn(item: LiveItem, guiding: Boolean = false) = (if (guiding) guideStates else liveStates).getValue(item).value
+    fun set(item: LiveItem, on: Boolean, guiding: Boolean = false) {
+        (if (guiding) guideStates else liveStates).getValue(item).value = on
+        prefs.edit().putBoolean(if (guiding) "guide_${item.key}" else "live_${item.key}", on).apply()
     }
 
-    /** Live exploration runs all the time unless paused here. */
+    /** False while paused: live exploration and route guidance both stay quiet. */
     var liveExploration by bool("live_exploration", true)
     var whatsAround by bool("whats_around", false)
     var units by enumPref("units", if (prefs.getBoolean("metric", false)) Units.METERS else Units.FEET)

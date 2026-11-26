@@ -44,11 +44,7 @@ fun ExploreScreen() {
         val pointing = app.whatsAround.pointingAt.value
         if (pointing.isNotBlank()) Text(pointing, fontSize = 18.sp, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
 
-        SwitchRow("Live exploration", s.liveExploration) { on ->
-            s.liveExploration = on
-            if (!on) app.speaker.stop()
-            app.speaker.say(if (on) "Live exploration on." else "Live exploration paused.", true)
-        }
+        BigButton(if (s.liveExploration) "Pause" else "Resume") { app.togglePause() }
         Text(app.explorer.status.value, fontSize = 16.sp, modifier = Modifier.padding(vertical = 4.dp))
         val fix = app.location.fix.value
         if (fix != null && !Offline.hasMapFor(fix.pos)) {
@@ -94,7 +90,7 @@ fun ExploreScreen() {
 }
 
 /** The latest value for one live exploration item, or null if there isn't one yet. */
-private fun liveValue(app: TrekerApp, item: LiveItem): String? {
+fun liveValue(app: TrekerApp, item: LiveItem): String? {
     val a = app.explorer.area.value
     return when (item) {
         LiveItem.COUNTRY -> a?.country

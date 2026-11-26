@@ -12,13 +12,13 @@ The first time you open Treker, it asks for permission to use your location and 
 
 Next, download the map for your area. Go to the Help and settings tab, find Offline maps, and choose the map that says it covers where you are. Maps are large, so use Wi-Fi. You can keep using your phone while it downloads, and Treker says when the map is ready. If there's no map for where you are, the Explore tab says so and has a Get the offline map button.
 
-Live exploration starts straight away and keeps running when the screen is off or you're in another app. While it runs, Android shows a Treker notification with three buttons: Pause or resume announcements, Mute or unmute guidance, and Stop Treker, which stops GPS, guidance and live exploration until you open Treker again. These work from the notification shade without opening Treker.
+Live exploration starts straight away and keeps running when the screen is off or you're in another app. While it runs, Android shows a Treker notification with two buttons: Pause or resume, which does the same as the Pause button, and Stop Treker, which stops GPS, guidance and live exploration until you open Treker again. Both work from the notification shade without opening Treker.
 
 # Explore tab
 
 What's Around is the first thing on the Explore tab. Switch it on, then point the top of your phone in any direction, holding it flat or upright. Treker says the place or intersection in that direction and how far away it is. Turn slowly to hear everything around you. Switch it off when you're done, because it uses the compass all the time it's on.
 
-Live exploration announces information as you move. Switch it off to pause the announcements; Treker stops talking straight away. GPS keeps running so the other features still work.
+Live exploration announces information as you move, all the time. Below What's Around is the Pause button: it pauses live exploration and route guidance together, and Treker stops talking straight away. The button then says Resume. GPS keeps running while paused, so the other features still work and guidance keeps following you; when you resume during guidance, Treker says the current instruction.
 
 Below that is a line saying how good the GPS signal is.
 
@@ -69,9 +69,9 @@ Start from my location moves you back to where you really are.
 
 Type an address or a place name in the single Address or place name field, then press Search, or the search key on the keyboard. A whole address goes in the one field, for example 123 Main Street, Springfield, Illinois. You can also type a business name or a kind of place, like coffee. Results are listed with their distance from you. Each result has the place actions below.
 
-While guidance is running, the top of the Routes tab shows the current instruction and has Repeat instruction, Mute guidance, Stop guidance and Report a route problem buttons, followed by the list of steps.
+While guidance is running, the top of the Routes tab shows the current instruction and has Repeat instruction, Pause, Stop guidance and Report a route problem buttons. Pause is the same as on the Explore tab; Repeat instruction still speaks while paused.
 
-Mute guidance silences guidance announcements for walking, driving and public transit alike. Guidance keeps running and the screen keeps updating, and Repeat instruction still speaks when you press it. The button then says Unmute guidance.
+Next comes Announce while guiding: the same switches as the Explore tab's Announce while moving, but used instead of them while you're being guided, in any travel mode. So you can, for example, hear every intersection while exploring but only street names while following a route. Like on the Explore tab, a switch that's on shows its latest information. The list of steps follows.
 
 # Place actions
 
@@ -147,7 +147,7 @@ Speech: Treker's own voice, which speaks live exploration, What's Around and gui
 - Speech rate, pitch and volume.
 - Test speech plays a sample announcement.
 
-Announcements and verbosity: how much live exploration says, set separately for streets, intersections, places you pass, and the country, state, county, city and zip code. Each has three levels, Brief, Normal and Detailed, and each option includes an example of what you'll hear. Detailed intersections say what kind of intersection it is, like a T intersection or a 4-way intersection, and where it is, like ahead. Detailed streets say what kind of street it is, like a residential street or a major road. Announce intersections ahead sets how early intersections are announced, from about 50 feet to about 200 feet. The switches for each kind of announcement are here too, as well as on the Explore tab.
+Announcements and verbosity: how much live exploration says, set separately for streets, intersections, places you pass, and the country, state, county, city and zip code. Each has three levels, Brief, Normal and Detailed, and each option includes an example of what you'll hear. Detailed intersections say what kind of intersection it is, like a T intersection or a 4-way intersection, and where it is, like ahead. Detailed streets say what kind of street it is, like a residential street or a major road. Announce intersections ahead sets how early intersections are announced, from about 50 feet to about 200 feet. The switches for each kind of announcement are here too, both sets: Announce while moving, as on the Explore tab, and Announce while guiding, as on the Routes tab.
 
 Routes:
 

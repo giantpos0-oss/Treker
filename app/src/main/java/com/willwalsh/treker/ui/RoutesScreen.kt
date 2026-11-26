@@ -75,12 +75,18 @@ fun RoutesScreen() {
             if (g.current.value.isNotBlank()) Text(g.current.value, fontSize = 20.sp, modifier = Modifier.padding(vertical = 6.dp))
             if (g.active.value) {
                 BigButton("Repeat instruction") { g.repeat() }
-                BigButton(if (g.muted.value) "Unmute guidance" else "Mute guidance") { g.toggleMute() }
+                BigButton(if (app.settings.liveExploration) "Pause" else "Resume") { app.togglePause() }
                 BigButton("Stop guidance") { g.stop() }
                 BigButton("Report a route problem") {
                     app.location.fix.value?.pos?.let {
                         AppNav.report.value = ReportRequest(it, heard = g.current.value, problem = com.willwalsh.treker.data.Problem.ROUTE)
                     }
+                }
+                Heading("Announce while guiding")
+                for (item in com.willwalsh.treker.LiveItem.entries) {
+                    val on = app.settings.isOn(item, guiding = true)
+                    val value = if (on) liveValue(app, item) else null
+                    SwitchRow(if (value.isNullOrBlank()) item.label else "${item.label}: $value", on) { app.settings.set(item, it, guiding = true) }
                 }
                 if (g.steps.isNotEmpty()) {
                     Heading("Steps")

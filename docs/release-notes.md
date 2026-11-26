@@ -1,5 +1,11 @@
 # Treker release notes
 
+## Version 0.1.2
+
+- New: one Pause button pauses live exploration and route guidance together, and Resume brings both back. It's near the top of the Explore tab, on the Routes tab while guidance is running, and in the Treker notification as Pause or resume. While paused, guidance keeps following you silently; when you resume, Treker says the current instruction.
+- New: a separate set of announcement switches for while you're being guided, under Announce while guiding on the Routes tab: country, state, county, city, neighborhood, zip code, street name, nearest address, approaching intersections and places you pass. They're used instead of the Explore tab's switches whenever guidance is running, in every travel mode.
+- Removed: Mute guidance, replaced by Pause, and the Live exploration switch on the Explore tab, also replaced by Pause.
+
 ## Version 0.1.1
 
 - Fixed: Treker kept saying GPS signal weak and GPS signal good again over and over, and could talk so much that the screen reader couldn't be heard. Now the GPS signal is only announced when a change lasts, weak for 20 seconds or good again for 15, and at most once every 3 minutes. You can switch these announcements off in Help and settings, under Announcements and verbosity.
