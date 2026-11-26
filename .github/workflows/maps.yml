@@ -87,8 +87,11 @@ jobs:
         run: |
           mkdir -p work
           # The download site turns away bursts of connections, so keep trying for up to about 20 minutes.
+          # If it still refuses, the same extract from the openstreetmap.fr mirror.
           curl -fL --retry 12 --retry-delay 90 --retry-all-errors --connect-timeout 60 \
-            -o work/region.osm.pbf "https://download.geofabrik.de/${{ matrix.region.path }}-latest.osm.pbf"
+            -o work/region.osm.pbf "https://download.geofabrik.de/${{ matrix.region.path }}-latest.osm.pbf" \
+          || curl -fL --retry 6 --retry-delay 60 --retry-all-errors --connect-timeout 60 \
+            -o work/region.osm.pbf "https://download.openstreetmap.fr/extracts/${{ matrix.region.path }}-latest.osm.pbf"
           ls -la work
 
       # Zip code, state, county and city areas from the U.S. Census Bureau (public domain), cached.
