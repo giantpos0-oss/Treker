@@ -185,7 +185,7 @@ private fun AnnouncementSettings() {
     Choices("Intersections", opts("Main Street and Oak Avenue", "Approaching Main Street and Oak Avenue, 100 feet",
         "Approaching 4-way intersection, Main Street and Oak Avenue, 100 feet, ahead"), s.intersectionVerbosity) { s.intersectionVerbosity = it }
     Choices("Announce intersections ahead", AnnounceDistance.entries.map { it to it.label }, s.intersectionDistance) { s.intersectionDistance = it }
-    Choices("Places you pass", opts("Corner Cafe", "Corner Cafe, right, 50 feet", "Corner Cafe, Cafe, right, 50 feet"), s.placeVerbosity) { s.placeVerbosity = it }
+    Choices("Places you pass", opts("Corner Cafe", "Corner Cafe, to the right, 50 feet", "Corner Cafe, Cafe, to the right, 50 feet"), s.placeVerbosity) { s.placeVerbosity = it }
     Choices("Country, state, county, city and zip code", opts("Austin", "Austin, zip code 7 8 7 0 1", "Entering Austin, zip code 7 8 7 0 1"),
         s.areaVerbosity) { s.areaVerbosity = it }
 

@@ -60,13 +60,21 @@ object Geo {
         else compass8[(((bearing % 360) + 360) % 360 / 45.0).roundToInt() % 8]
 
     /**
-     * Where [target] is relative to the way you're facing ([heading]): ahead, ahead right, right,
-     * behind right, behind, behind left, left or ahead left.
+     * Where [target] is relative to the way you're facing ([heading]), in plain words:
+     * straight ahead within 15 degrees either side; "ahead and slightly to the left" up to 60;
+     * "to the left" up to 120; "behind you to the left" up to 165; then "behind you".
      */
     fun relativeWord(heading: Double, target: Double): String {
-        val rel = ((target - heading) % 360 + 360) % 360
-        return listOf("ahead", "ahead right", "right", "behind right", "behind", "behind left", "left", "ahead left")[
-            ((rel + 22.5) / 45.0).toInt() % 8]
+        val d = angleDiff(heading, target) // negative is left, positive is right
+        val side = if (d < 0) "left" else "right"
+        val a = Math.abs(d)
+        return when {
+            a <= 15 -> "ahead"
+            a <= 60 -> "ahead and slightly to the $side"
+            a <= 120 -> "to the $side"
+            a <= 165 -> "behind you to the $side"
+            else -> "behind you"
+        }
     }
 
     /** "2 o'clock" style direction of [target] relative to facing [heading]. */

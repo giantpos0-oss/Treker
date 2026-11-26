@@ -8,7 +8,7 @@ import androidx.compose.runtime.staticCompositionLocalOf
 
 /** How a direction is spoken. */
 enum class DirectionStyle(val label: String) {
-    RELATIVE("Ahead, behind, left and right"),
+    RELATIVE("Ahead, slightly to the left, to the left, behind you and so on"),
     CLOCK("Clock face, like 2 o'clock"),
 }
 
