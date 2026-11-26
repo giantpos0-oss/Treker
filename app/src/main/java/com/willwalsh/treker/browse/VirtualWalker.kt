@@ -110,7 +110,7 @@ class VirtualWalker(private val app: TrekerApp) {
         val a = area ?: return ""
         val ahead = walkAhead() ?: return "Dead end ahead."
         val i = a.clusterIntersection(ahead.first)
-        val what = i?.spoken(way?.name) ?: "end of ${way?.name}"
+        val what = i?.spoken() ?: "end of ${way?.name}"
         return "Next: $what, ${Geo.distanceWords(ahead.third, units)}."
     }
 
@@ -131,7 +131,7 @@ class VirtualWalker(private val app: TrekerApp) {
         }
         maybeReload()
         val inter = a.clusterIntersection(n)
-        val here = inter?.spoken(w.name) ?: "End of ${w.name}"
+        val here = inter?.spoken() ?: "End of ${w.name}"
         say("$here. Moved ${Geo.distanceWords(dist, units)}. ${lookAhead()}")
     }
 
@@ -158,7 +158,7 @@ class VirtualWalker(private val app: TrekerApp) {
         val n = node
         val inter = n?.let { area?.clusterIntersection(it) }
         say(buildString {
-            if (inter != null) append("At ${inter.spoken(w.name)}. ")
+            if (inter != null) append("At ${inter.spoken()}. ")
             append("On ${w.name}. ")
             append(lookAhead())
         })

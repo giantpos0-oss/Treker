@@ -217,14 +217,14 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
                     announcedIntersections[ahead.first.node] = now
                     val (i, d) = ahead
                     val dist = Geo.distanceWords(d, settings.units)
-                    lastIntersection.value = "${i.spoken(street.value)}, $dist"
+                    lastIntersection.value = "${i.spoken()}, $dist"
                     say(when (settings.intersectionVerbosity) {
-                        Verbosity.BRIEF -> i.spoken(street.value)
-                        Verbosity.NORMAL -> "Approaching ${i.spoken(street.value)}, $dist"
+                        Verbosity.BRIEF -> i.spoken()
+                        Verbosity.NORMAL -> "Approaching ${i.spoken()}, $dist"
                         Verbosity.DETAILED -> {
                             val legs = map.legs(i)
-                            val kind = if (legs >= 3) "$legs-way intersection" else "intersection"
-                            words("Approaching $kind", i.spoken(street.value), dist, direction(fix, i.pos))
+                            val kind = when { legs == 3 -> "T intersection"; legs >= 4 -> "$legs-way intersection"; else -> "intersection" }
+                            words("Approaching $kind", i.spoken(), dist, direction(fix, i.pos))
                         }
                     })
                 }
@@ -330,7 +330,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         map?.nextIntersection(fix.pos, heading, streetName)?.let { n ->
             val ways = if (n.legs >= 3) "${n.legs}-way, " else ""
             parts.add("${if (heading != null) "Next" else "Nearest"} intersection in ${Geo.distanceWords(n.distance, settings.units)}, " +
-                "$ways${n.intersection.spoken(streetName)}.")
+                "$ways${n.intersection.crossing(streetName)}.")
         }
         val place = listOfNotNull(a?.neighborhood, a?.city, a?.county, a?.state).joinToString(", ")
         val zip = a?.zip?.let { "zip code ${spellZip(it)}" }

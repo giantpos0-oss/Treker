@@ -114,8 +114,9 @@ class AccuracyTest {
         assertEquals(2, t.intersections.size)
         assertEquals(1, t.clusters.size)
         assertEquals(t.clusterOf(2), t.clusterOf(3))
-        assertEquals("Main Street crossing Oak Avenue", t.clusters[0].spoken())
-        assertEquals("Oak Avenue crossing Main Street", t.clusters[0].spoken("Oak Avenue"))
+        assertEquals("Main Street and Oak Avenue", t.clusters[0].spoken())
+        assertEquals("Main Street crossing Oak Avenue", t.clusters[0].crossing())
+        assertEquals("Oak Avenue crossing Main Street", t.clusters[0].crossing("Oak Avenue"))
     }
 
     @Test fun cornerPicksStreetYouAreWalkingAlong() {
@@ -170,7 +171,7 @@ class AccuracyTest {
         val n = t.nextIntersection(p, 90.0, "Main Street")!!
         assertEquals(92.0, n.distance, 2.0)
         assertEquals(4, n.legs)
-        assertEquals("Main Street crossing Oak Avenue", n.intersection.spoken("Main Street"))
+        assertEquals("Main Street crossing Oak Avenue", n.intersection.crossing("Main Street"))
     }
 
     @Test fun dividedRoadCrossingHasFourLegs() {

@@ -8,8 +8,16 @@ data class Way(val id: Long, val name: String, val kind: String, val nodes: List
 
 /** A spot where two or more differently named streets meet. */
 data class Intersection(val node: Long, val pos: LatLon, val streets: List<String>) {
-    /** HumanWare style: "Main Street crossing Oak Avenue", with [from] (the street you're on) first. */
-    fun spoken(from: String? = null): String {
+    /** "Main Street and Oak Avenue": used by live exploration, What's Around and map browsing. */
+    fun spoken(): String = when (streets.size) {
+        0 -> "Unnamed intersection"
+        1 -> streets[0]
+        2 -> "${streets[0]} and ${streets[1]}"
+        else -> streets.dropLast(1).joinToString(", ") + " and " + streets.last()
+    }
+
+    /** HumanWare style, for Where am I: "Main Street crossing Oak Avenue", with [from] (the street you're on) first. */
+    fun crossing(from: String? = null): String {
         if (streets.isEmpty()) return "Unnamed intersection"
         val first = streets.firstOrNull { it == from } ?: streets.first()
         val others = streets.filter { it != first }
