@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
     inputs:
       only:
-        description: One region id to build (empty builds all U.S. regions)
+        description: Region ids to build, comma separated, or all-but:id,id (empty builds all U.S. regions)
         required: false
         default: ""
   schedule:
@@ -43,9 +43,15 @@ jobs:
           regions = json.load(open("tools/us-regions.json"))
           only = (os.environ.get("ONLY") or "").strip()
           if only:
-              regions = [r for r in regions if r["id"] == only]
+              # One id, several ids separated by commas, or "all-but:" followed by ids to skip.
+              if only.startswith("all-but:"):
+                  skip = {x.strip() for x in only[8:].split(",")}
+                  regions = [r for r in regions if r["id"] not in skip]
+              else:
+                  want = {x.strip() for x in only.split(",")}
+                  regions = [r for r in regions if r["id"] in want]
               if not regions:
-                  raise SystemExit(f"No region with id {only} in tools/us-regions.json")
+                  raise SystemExit(f"No regions match {only} in tools/us-regions.json")
           print("regions=" + json.dumps(regions))
           EOF
       - name: Make sure the maps release exists
