@@ -41,6 +41,8 @@ On the Explore tab, under Announce while moving, each piece of information live 
 - Approaching intersections
 - Places you pass
 
+Each switch that's on also shows the latest information for it, so you can check it any time by moving through the switches with your screen reader, for example City: Austin, switch on; or Approaching intersections: Main Street and Oak Avenue, 100 feet, switch on. A switch that's off shows only its name.
+
 Country, state, county, city, neighborhood, zip code and street address are announced when they change. Street name is announced when you move onto a different street. Approaching intersections are announced when an intersection is ahead of you in the direction you're walking. Places you pass are announced when you come within about 35 meters of them. Everything is looked up in the offline map, so live exploration works without an internet connection.
 
 Recent announcements, at the bottom of the Explore tab, lists the last things Treker said, newest first.

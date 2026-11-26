@@ -32,6 +32,9 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
     /** Where you are, for the "Where am I" button. */
     val area = mutableStateOf<AreaInfo?>(null)
     val street = mutableStateOf<String?>(null)
+    /** The last intersection and place announced, shown on the Explore tab's switches. */
+    val lastIntersection = mutableStateOf<String?>(null)
+    val lastPlace = mutableStateOf<String?>(null)
     val status = mutableStateOf("Waiting for GPS")
 
     private var lastLookupAt: LatLon? = null
@@ -151,6 +154,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
                     announcedIntersections[ahead.first.node] = now
                     val (i, d) = ahead
                     val dist = Geo.distanceWords(d, settings.units)
+                    lastIntersection.value = "${i.spoken()}, $dist"
                     say(when (settings.intersectionVerbosity) {
                         Verbosity.BRIEF -> i.spoken()
                         Verbosity.NORMAL -> "Approaching ${i.spoken()}, $dist"
@@ -197,6 +201,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
                 if (now - (announcedPlaces[key] ?: 0L) < 15 * 60_000) continue
                 announcedPlaces[key] = now
                 val dist = Geo.distanceWords(d, settings.units)
+                lastPlace.value = words(p.name, dist)
                 say(when (settings.placeVerbosity) {
                     Verbosity.BRIEF -> p.name
                     Verbosity.NORMAL -> words(p.name, direction(fix, p.pos), dist)

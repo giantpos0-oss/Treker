@@ -80,12 +80,32 @@ fun ExploreScreen() {
 
         Heading("Announce while moving")
         for (item in LiveItem.entries) {
-            SwitchRow(item.label, s.isOn(item)) { s.set(item, it) }
+            // When a switch is on, it shows the latest information, so a screen reader reads it while moving through them.
+            val value = if (s.isOn(item)) liveValue(app, item) else null
+            SwitchRow(if (value.isNullOrBlank()) item.label else "${item.label}: $value", s.isOn(item)) { s.set(item, it) }
         }
 
         Heading("Recent announcements")
         val history = app.explorer.history
         if (history.isEmpty()) Text("Nothing announced yet.", fontSize = 16.sp)
         history.take(15).forEach { Text(it, fontSize = 16.sp, modifier = Modifier.padding(vertical = 4.dp)) }
+    }
+}
+
+/** The latest value for one live exploration item, or null if there isn't one yet. */
+private fun liveValue(app: TrekerApp, item: LiveItem): String? {
+    val a = app.explorer.area.value
+    return when (item) {
+        LiveItem.COUNTRY -> a?.country
+        LiveItem.STATE -> a?.state
+        LiveItem.COUNTY -> a?.county
+        LiveItem.CITY -> a?.city
+        LiveItem.NEIGHBORHOOD -> a?.neighborhood
+        // Digits spaced out so it's read as a zip code, not a number.
+        LiveItem.ZIP -> a?.zip?.toCharArray()?.joinToString(" ")
+        LiveItem.STREET -> app.explorer.street.value
+        LiveItem.ADDRESS -> a?.address
+        LiveItem.INTERSECTIONS -> app.explorer.lastIntersection.value
+        LiveItem.PLACES -> app.explorer.lastPlace.value
     }
 }
