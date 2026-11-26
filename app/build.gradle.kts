@@ -14,7 +14,12 @@ android {
             file("$sdk/ndk").listFiles()?.filter { it.isDirectory }?.sortedByDescending { it.name }?.map { it.path }.orEmpty()
         })
         .firstOrNull { file("$it/source.properties").exists() }
-        ?.let { ndkPath = it }
+        ?.let { path ->
+            ndkPath = path
+            // ndkVersion must match the NDK found, or the build refuses to use it.
+            file("$path/source.properties").readLines().firstOrNull { it.startsWith("Pkg.Revision") }
+                ?.substringAfter("=")?.trim()?.let { ndkVersion = it }
+        }
 
     defaultConfig {
         applicationId = "com.willwalsh.treker"
