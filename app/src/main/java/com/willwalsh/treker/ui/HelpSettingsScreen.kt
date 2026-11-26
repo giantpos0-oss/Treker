@@ -176,8 +176,7 @@ private fun AnnouncementSettings() {
 
     SwitchRow("Announce when the GPS signal turns weak or good again", s.announceGps) { s.announceGps = it }
     Text("Announce while guiding", fontSize = 19.sp, modifier = Modifier.padding(top = 14.dp, bottom = 4.dp))
-    Text("Used instead of the Explore tab's switches while route guidance is running. They're also on the Routes tab during guidance; " +
-        "they're here so you can set them before you start a route.", fontSize = 16.sp)
+    Text("Used instead of the Explore tab's switches while route guidance is running, in every travel mode.", fontSize = 16.sp)
     for (item in LiveItem.entries) SwitchRow(item.label, s.isOn(item, guiding = true)) { s.set(item, it, guiding = true) }
 }
 

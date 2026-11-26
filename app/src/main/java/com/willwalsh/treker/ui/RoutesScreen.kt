@@ -81,12 +81,6 @@ fun RoutesScreen() {
                         AppNav.report.value = ReportRequest(it, heard = g.current.value, problem = com.willwalsh.treker.data.Problem.ROUTE)
                     }
                 }
-                Heading("Announce while guiding")
-                for (item in com.willwalsh.treker.LiveItem.entries) {
-                    val on = app.settings.isOn(item, guiding = true)
-                    val value = if (on) liveValue(app, item) else null
-                    SwitchRow(if (value.isNullOrBlank()) item.label else "${item.label}: $value", on) { app.settings.set(item, it, guiding = true) }
-                }
                 if (g.steps.isNotEmpty()) {
                     Heading("Steps")
                     g.steps.forEachIndexed { i, s -> Text("${i + 1}. $s", fontSize = 17.sp, modifier = Modifier.padding(vertical = 4.dp)) }

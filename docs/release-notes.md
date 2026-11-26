@@ -1,5 +1,9 @@
 # Treker release notes
 
+## Version 0.1.4
+
+- Removed: the Announce while guiding switches from the Routes tab during guidance. They're in Help and settings, under Announcements and verbosity, only.
+
 ## Version 0.1.3
 
 - New: a bar across the top of every screen. It names the screen you're on and has Pause, or Resume when paused, at the top right. On a settings page, Navigate up is at the top left and takes you back to Help and settings.

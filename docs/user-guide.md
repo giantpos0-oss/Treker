@@ -76,7 +76,9 @@ Type an address or a place name in the single Address or place name field, then 
 
 While guidance is running, the top of the Routes tab shows the current instruction and has Repeat instruction, Pause, Stop guidance and Report a route problem buttons. Pause is the same as on the Explore tab; Repeat instruction still speaks while paused.
 
-Next comes Announce while guiding: the same switches as the Explore tab's Announce while moving, but used instead of them while you're being guided, in any travel mode. So you can, for example, hear every intersection while exploring but only street names while following a route. Like on the Explore tab, a switch that's on shows its latest information. The list of steps follows.
+Below them is the list of steps.
+
+What's announced while you're being guided, such as street names and intersections, is set separately from the Explore tab, in Help and settings, under Announcements and verbosity, then Announce while guiding. So you can, for example, hear every intersection while exploring but only street names while following a route.
 
 # Place actions
 
@@ -152,7 +154,7 @@ Speech: Treker's own voice, which speaks live exploration, What's Around and gui
 - Speech rate, pitch and volume.
 - Test speech plays a sample announcement.
 
-Announcements and verbosity: how much live exploration says, set separately for streets, intersections, places you pass, and the country, state, county, city and zip code. Each has three levels, and each option says what you'll hear, for example: Brief, for example: Main Street. Detailed intersections say what kind of intersection it is, like a T intersection or a 4-way intersection, and where it is, like ahead. Detailed streets say what kind of street it is, like a residential street or a major road. Announce intersections ahead sets how early intersections are announced, from about 50 feet to about 200 feet. Announce while guiding is here too, so you can choose what's announced during route guidance before you start a route. The switches for while you're exploring are on the Explore tab, under Announce while moving.
+Announcements and verbosity: how much live exploration says, set separately for streets, intersections, places you pass, and the country, state, county, city and zip code. Each has three levels, and each option says what you'll hear, for example: Brief, for example: Main Street. Detailed intersections say what kind of intersection it is, like a T intersection or a 4-way intersection, and where it is, like ahead. Detailed streets say what kind of street it is, like a residential street or a major road. Announce intersections ahead sets how early intersections are announced, from about 50 feet to about 200 feet. Announce while guiding is here too: the same switches as the Explore tab's Announce while moving, used instead of them while route guidance is running, in every travel mode. The switches for while you're exploring are on the Explore tab.
 
 Routes:
 
