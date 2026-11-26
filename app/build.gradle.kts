@@ -70,7 +70,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
 
     // Valhalla routing engine, running on the phone against the downloaded map's routing tiles.
-    implementation("io.github.rallista:valhalla-mobile:0.6.1")
+    implementation("io.github.rallista:valhalla-mobile:0.6.6")
+    implementation("io.github.rallista:valhalla-models-config:0.6.0")
 
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20240303")

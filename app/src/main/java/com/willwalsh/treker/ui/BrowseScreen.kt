@@ -120,7 +120,10 @@ class SwipePad(
 
     override fun onInitializeAccessibilityNodeInfo(info: AccessibilityNodeInfo) {
         super.onInitializeAccessibilityNodeInfo(info)
-        if (Build.VERSION.SDK_INT >= 34) info.isRequestTouchPassthrough = true
+        // Android 14's "request touch passthrough", called by name so it works with any SDK version.
+        if (Build.VERSION.SDK_INT >= 34) runCatching {
+            AccessibilityNodeInfo::class.java.getMethod("setRequestTouchPassthrough", Boolean::class.javaPrimitiveType).invoke(info, true)
+        }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean = detector.onTouchEvent(event)

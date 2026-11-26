@@ -63,7 +63,7 @@ fun ExploreScreen() {
                     val list = app.explorer.nearbyPlaces()
                     places = list
                     placesNote = if (list.isEmpty()) "No places found nearby." else "${list.size} places nearby, nearest first."
-                catch (e: Exception) { places = emptyList(); placesNote = e.message ?: "Couldn't get places." }
+                } catch (e: Exception) { places = emptyList(); placesNote = e.message ?: "Couldn't get places." }
                 app.speaker.say(placesNote, true)
             }
         }
