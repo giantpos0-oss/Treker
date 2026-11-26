@@ -14,6 +14,9 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "0.1.0"
+        // Only 64-bit ARM, which every Android phone from the last several years uses. Including the
+        // routing engine for every processor type made the download nearly 500 megabytes.
+        ndk { abiFilters += listOf("arm64-v8a") }
     }
 
     // Release builds are signed with Treker's own key (GitHub secret TREKER_SIGNING), so every new
@@ -49,7 +52,10 @@ android {
     }
     // The user guide and release notes (docs/*.md) are bundled so Help works offline.
     sourceSets { getByName("main") { assets.srcDir(rootProject.file("docs")) } }
-    packaging { resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" } }
+    packaging {
+        resources { excludes += "/META-INF/{AL2.0,LGPL2.1}" }
+        jniLibs { useLegacyPackaging = false }
+    }
     testOptions { unitTests.isReturnDefaultValues = true }
 }
 
