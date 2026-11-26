@@ -15,6 +15,7 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.willwalsh.treker.MainActivity
 import com.willwalsh.treker.TrekerApp
+import com.willwalsh.treker.location.ShakeDetector
 import kotlinx.coroutines.launch
 
 /**
@@ -44,6 +45,13 @@ class ExploreService : LifecycleService() {
         }.onFailure { stopSelf(); return }
         app.location.start()
         lifecycleScope.launch { app.location.fix.collect { f -> if (f != null) app.explorer.onFix(f) } }
+        // Shake the phone to hear where you are, even with the screen off or in another app.
+        shake = ShakeDetector(this, { app.settings.shakeStrength.g }) {
+            if (app.settings.shakeWhereAmI) {
+                if (app.settings.vibrate) app.speaker.tick(60)
+                app.speaker.say(app.explorer.whereAmI(), interrupt = true)
+            }
+        }.also { it.start() }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -58,7 +66,10 @@ class ExploreService : LifecycleService() {
         return START_STICKY
     }
 
+    private var shake: ShakeDetector? = null
+
     override fun onDestroy() {
+        shake?.stop()
         (application as TrekerApp).location.stop()
         super.onDestroy()
     }

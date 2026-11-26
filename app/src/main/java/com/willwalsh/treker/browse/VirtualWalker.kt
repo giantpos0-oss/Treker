@@ -24,7 +24,7 @@ class VirtualWalker(private val app: TrekerApp) {
     private var index = 0
     private var dir = 1
 
-    private val metric get() = app.settings.metric
+    private val units get() = app.settings.units
     private fun say(text: String) { description.value = text; app.speaker.say(text, interrupt = true) }
 
     /** Starts at the street spot nearest [start] (your current position, or a place you chose). */
@@ -111,7 +111,7 @@ class VirtualWalker(private val app: TrekerApp) {
         val ahead = walkAhead() ?: return "Dead end ahead."
         val i = a.clusterIntersection(ahead.first)
         val what = i?.spoken() ?: "end of ${way?.name}"
-        return "Next: $what, ${Geo.distanceWords(ahead.third, metric)}."
+        return "Next: $what, ${Geo.distanceWords(ahead.third, units)}."
     }
 
     fun forward() {
@@ -132,7 +132,7 @@ class VirtualWalker(private val app: TrekerApp) {
         maybeReload()
         val inter = a.clusterIntersection(n)
         val here = inter?.spoken() ?: "End of ${w.name}"
-        say("$here. Moved ${Geo.distanceWords(dist, metric)} ${Geo.compassWord(heading())}. ${lookAhead()}")
+        say("$here. Moved ${Geo.distanceWords(dist, units)} ${Geo.compassWord(heading())}. ${lookAhead()}")
     }
 
     fun turnAround() {

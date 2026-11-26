@@ -58,7 +58,7 @@ class WhatsAround(private val app: TrekerApp, private val scope: CoroutineScope)
                     val now = System.currentTimeMillis()
                     if (hit != null && hit.first.key != lastKey && now - lastSpoke > 600) {
                         lastKey = hit.first.key; lastSpoke = now
-                        val text = "${hit.first.name}, ${Geo.distanceWords(hit.second, app.settings.metric)}"
+                        val text = "${hit.first.name}, ${Geo.distanceWords(hit.second, app.settings.units)}"
                         pointingAt.value = text
                         if (app.settings.vibrate) app.speaker.tick()
                         app.speaker.say(text, interrupt = true)

@@ -127,24 +127,44 @@ For some problems you don't have to wait. When you report one of these, Treker o
 
 Your fixes are listed on the Help and settings tab, under Map reports and fixes, each with an Undo button. That section also lists the reports you've sent, each of which opens its OpenStreetMap note so you can see whether it's been fixed, and a button to send any reports still waiting.
 
+# Shake for Where am I
+
+Shake your phone firmly, twice, to hear Where am I: your street, nearest address, city, zip code and direction. It works with the screen off and while you're in another app, as long as live exploration is running. You can switch it off, or change how hard you have to shake, in Help and settings, under Shake and What's Around.
+
 # Help and settings tab
 
-At the top are Open user guide in browser and Open release notes in browser.
+At the top are Open user guide in browser and Open release notes in browser. Below them, each group of settings has its own button. Each group opens on the same tab, with a Back to Help and settings button at the top; your phone's back gesture works too.
 
-Next is Offline maps, then Map reports and fixes, described above.
+Speech: Treker's own voice, which speaks live exploration, What's Around and guidance. It's separate from your screen reader's voice.
 
-Offline maps: Maps you've downloaded each have a Delete button. Below them is every map you can download, with the one covering where you are first. Each says how big it is. A map you already have says Update instead, with the date it was built; updating gets the newest OpenStreetMap data.
+- Speech engine: any speech engine installed on your phone, or the phone's default.
+- Voice: the voices in that engine, in your language. Switch on Show voices for all languages to see the rest.
+- Speech rate, pitch and volume.
+- Test speech plays a sample announcement.
 
-Then the settings:
+Announcements and verbosity: how much live exploration says, set separately for streets, intersections, places you pass, and the country, state, county, city and zip code. Each has three levels, Brief, Normal and Detailed, and each option includes an example of what you'll hear. Detailed intersections say what kind of intersection it is, like a T intersection or a 4-way intersection, and its direction. Announce intersections ahead sets how early intersections are announced, from about 50 feet to about 200 feet. The switches for each kind of announcement are here too, as well as on the Explore tab.
 
-- Use meters instead of feet.
-- Directions as clock face. On, directions are like 2 o'clock, relative to the way you're walking or pointing. Off, directions are compass directions like northeast.
-- Vibrate in What's Around: a short vibration each time What's Around finds something new.
+Routes:
+
+- Route type: fastest or shortest distance.
+- Walking: avoid stairs, prefer sidewalks and footpaths, avoid alleys, and prefer lit streets. Avoid stairs, prefer sidewalks and avoid alleys are on to start with.
+- Driving: avoid highways, avoid toll roads, and avoid ferries.
 - Practice mode: walking and driving guidance move along the route by themselves, so you can try guidance at home.
-- Speech speed.
-- What's Around distance: how far What's Around looks, from 50 to 500 meters.
 
-This user guide is also shown on this tab, below the settings.
+Route settings apply to the next route you start.
+
+Units and directions:
+
+- Distances: feet and miles, yards and miles, or meters and kilometers.
+- Directions: clock face, like 2 o'clock, relative to the way you're walking or pointing; or compass, like northeast.
+
+Shake and What's Around: shake for Where am I on or off, how hard to shake (light, medium or firm), vibration, and how far What's Around looks, from 50 to 500 meters.
+
+Offline maps: download, update and delete maps. Maps you've downloaded each have a Delete button. Below them is every map you can download, with the one covering where you are first, and how big it is. A map you already have says Update instead, with the date it was built; updating gets the newest OpenStreetMap data.
+
+Map reports and fixes: described above.
+
+User guide: this guide.
 
 # Where the information comes from
 

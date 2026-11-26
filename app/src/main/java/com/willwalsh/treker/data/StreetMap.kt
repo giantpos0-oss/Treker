@@ -56,6 +56,25 @@ class StreetArea(val center: LatLon, val radius: Double, val ways: List<Way>, va
         }
     }
     fun clusterOf(node: Long): Int? = clusterOfNode[node]
+
+    /** How many ways lead out of an intersection: 3 for a T, 4 for a crossroads. */
+    fun legs(i: Intersection): Int {
+        val idx = clusterOfNode[i.node] ?: return 0
+        val members = clusterOfNode.filterValues { it == idx }.keys
+        val dirs = HashSet<Int>()
+        for (n in members) for (w in waysAt[n].orEmpty()) {
+            if (w.name.isBlank()) continue
+            w.nodes.withIndex().filter { it.value == n }.forEach { (k, _) ->
+                for (d in listOf(-1, 1)) {
+                    val other = w.nodes.getOrNull(k + d) ?: continue
+                    if (other in members) continue
+                    val pos = nodes[other] ?: continue
+                    dirs.add(((Geo.bearing(i.pos, pos) + 22.5) / 45.0).toInt() % 8)
+                }
+            }
+        }
+        return dirs.size
+    }
     fun clusterIntersection(node: Long): Intersection? = clusterOfNode[node]?.let { clusters[it] }
 
     fun covers(p: LatLon, margin: Double) = Geo.distance(center, p) < radius - margin

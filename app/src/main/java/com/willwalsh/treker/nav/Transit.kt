@@ -39,7 +39,7 @@ object Transit {
     private const val BASE = "https://api.transitous.org/api"
     private val clock = DateTimeFormatter.ofPattern("h:mm a", Locale.US)
 
-    suspend fun plan(from: LatLon, to: LatLon, metric: Boolean): TransitTrip? = withContext(Dispatchers.IO) {
+    suspend fun plan(from: LatLon, to: LatLon, units: com.willwalsh.treker.Units): TransitTrip? = withContext(Dispatchers.IO) {
         val q = "fromPlace=${from.lat},${from.lon}&toPlace=${to.lat},${to.lon}&detailedTransfers=false&maxItineraries=3"
         val json = try { get("$BASE/v6/plan?$q") } catch (e: NotFound) { get("$BASE/v5/plan?$q") }
         val its = json.optJSONArray("itineraries") ?: return@withContext null
@@ -51,10 +51,10 @@ object Transit {
             if ((0 until legs.length()).any { n -> legs.getJSONObject(n).optString("mode") != "WALK" }) { chosen = itin; break }
         }
         chosen = chosen ?: its.optJSONObject(0) ?: return@withContext null
-        parse(chosen, metric)
+        parse(chosen, units)
     }
 
-    private fun parse(itin: JSONObject, metric: Boolean): TransitTrip {
+    private fun parse(itin: JSONObject, units: com.willwalsh.treker.Units): TransitTrip {
         val legs = itin.getJSONArray("legs")
         val out = ArrayList<TransitLeg>()
         for (i in 0 until legs.length()) {
@@ -64,7 +64,7 @@ object Transit {
             val to = stop(l.getJSONObject("to"))
             if (mode == "WALK") {
                 val meters = l.optDouble("distance", Double.NaN)
-                val dist = if (meters.isNaN()) "" else ", " + com.willwalsh.treker.data.Geo.distanceWords(meters, metric)
+                val dist = if (meters.isNaN()) "" else ", " + com.willwalsh.treker.data.Geo.distanceWords(meters, units)
                 out.add(TransitLeg(true, from, to, "Walk to ${to.name}$dist."))
             } else {
                 val vehicle = when (mode) {

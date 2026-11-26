@@ -5,6 +5,9 @@ import com.valhalla.valhalla.Valhalla
 import com.valhalla.valhalla.config.ValhallaConfigFactory
 import com.valhalla.valhalla.config.ValhallaConfigManager
 import com.valhalla.valhalla.files.ValhallaFile
+import com.willwalsh.treker.RouteType
+import com.willwalsh.treker.Settings
+import com.willwalsh.treker.Units
 import com.willwalsh.treker.data.LatLon
 import com.willwalsh.treker.data.Offline
 import com.willwalsh.treker.data.Regions
@@ -50,20 +53,39 @@ class Router(private val context: Context) {
     @Synchronized
     fun close() { engine?.close(); engine = null; engineRegion = null }
 
-    suspend fun route(from: LatLon, to: LatLon, walking: Boolean, metric: Boolean, heading: Double? = null): Route =
+    suspend fun route(from: LatLon, to: LatLon, walking: Boolean, settings: Settings, heading: Double? = null): Route =
         withContext(Dispatchers.IO) {
             val start = JSONObject().put("lat", from.lat).put("lon", from.lon)
             if (heading != null) start.put("heading", heading.toInt()).put("heading_tolerance", 60)
+            val costing = if (walking) "pedestrian" else "auto"
             val req = JSONObject()
                 .put("locations", JSONArray().put(start).put(JSONObject().put("lat", to.lat).put("lon", to.lon)))
-                .put("costing", if (walking) "pedestrian" else "auto")
-                .put("units", if (metric) "kilometers" else "miles")
+                .put("costing", costing)
+                .put("costing_options", JSONObject().put(costing, costingOptions(walking, settings)))
+                .put("units", if (settings.units == Units.METERS) "kilometers" else "miles")
                 .put("directions_options", JSONObject().put("language", "en-US"))
             val raw = try { engineFor(from).routeRaw(req.toString()) } catch (e: Exception) {
                 throw Exception(friendly(e.message))
             }
             parse(JSONObject(raw))
         }
+
+    /** The route settings, in Valhalla's terms. */
+    private fun costingOptions(walking: Boolean, s: Settings): JSONObject {
+        val o = JSONObject()
+        if (s.routeType == RouteType.SHORTEST) o.put("shortest", true)
+        if (s.avoidFerries) o.put("use_ferry", 0.0)
+        if (walking) {
+            if (s.avoidStairs) o.put("step_penalty", 600)
+            if (s.preferSidewalks) o.put("sidewalk_factor", 0.6).put("walkway_factor", 0.8)
+            if (s.avoidAlleys) o.put("alley_factor", 5.0)
+            if (s.preferLitStreets) o.put("use_lit", 1.0)
+        } else {
+            if (s.avoidHighways) o.put("use_highways", 0.0)
+            if (s.avoidTolls) o.put("use_tolls", 0.0)
+        }
+        return o
+    }
 
     private fun friendly(msg: String?): String = when {
         msg == null -> "Couldn't make a route."

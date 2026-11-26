@@ -42,9 +42,12 @@ class AccuracyTest {
     }
 
     @Test fun distanceWords() {
-        assertEquals("100 feet", Geo.distanceWords(30.48, false))
-        assertEquals("1.0 miles", Geo.distanceWords(1609.344, false))
-        assertEquals("30 meters", Geo.distanceWords(30.0, true))
+        assertEquals("100 feet", Geo.distanceWords(30.48, Units.FEET))
+        assertEquals("1.0 miles", Geo.distanceWords(1609.344, Units.FEET))
+        assertEquals("30 meters", Geo.distanceWords(30.0, Units.METERS))
+        assertEquals("1.5 kilometers", Geo.distanceWords(1500.0, Units.METERS))
+        assertEquals("100 yards", Geo.distanceWords(91.44, Units.YARDS))
+        assertEquals("1.0 miles", Geo.distanceWords(1609.344, Units.YARDS))
     }
 
     @Test fun routeShapeDecodes() {
@@ -111,7 +114,7 @@ class AccuracyTest {
         val said = ArrayList<String>()
         var arrived = false
         var off = 0
-        val f = RouteFollower(route, true, false, { said.add(it) }, {}, { off++ }, { arrived = true })
+        val f = RouteFollower(route, true, Units.FEET, { said.add(it) }, {}, { off++ }, { arrived = true })
         f.begin()
         var pos = origin
         fun step(bearing: Double, meters: Double) {
@@ -131,6 +134,11 @@ class AccuracyTest {
         assertTrue("arrived", arrived)
     }
 
+    @Test fun dividedRoadCrossingHasFourLegs() {
+        val t = town()
+        assertEquals(4, t.legs(t.clusters[0]))
+    }
+
     @Test fun leavingTheRouteIsNoticed() {
         val end = Geo.move(origin, 90.0, 300.0)
         val route = Route(listOf(origin, end), listOf(
@@ -138,7 +146,7 @@ class AccuracyTest {
             Maneuver("You have arrived.", "You have arrived.", "", 1, 0.0, 4),
         ), 300.0, 200.0)
         var off = 0
-        val f = RouteFollower(route, true, false, {}, {}, { off++ }, {})
+        val f = RouteFollower(route, true, Units.FEET, {}, {}, { off++ }, {})
         var pos = origin
         repeat(40) { pos = Geo.move(pos, 0.0, 2.0); f.onFix(Fix(pos, 5f, 1.4f, 0.0, 0)) } // walk 80 m north instead
         assertTrue("off route noticed", off >= 1)

@@ -3,6 +3,7 @@ package com.willwalsh.treker.nav
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import com.willwalsh.treker.TrekerApp
+import com.willwalsh.treker.Units
 import com.willwalsh.treker.data.Geo
 import com.willwalsh.treker.data.LatLon
 import com.willwalsh.treker.data.Place
@@ -24,7 +25,7 @@ enum class TravelMode(val label: String) { PEDESTRIAN("Pedestrian"), MOTORIZED("
 class RouteFollower(
     val route: Route,
     private val walking: Boolean,
-    private val metric: Boolean,
+    private val units: Units,
     private val say: (String) -> Unit,
     private val show: (String) -> Unit,
     private val onOffRoute: () -> Unit,
@@ -75,7 +76,7 @@ class RouteFollower(
         val far = if (walking) 60.0 else maxOf(400.0, speed * 25)
         val near = if (walking) 20.0 else maxOf(100.0, speed * 9)
         val now = if (walking) 7.0 else maxOf(25.0, speed * 2.5)
-        show("In ${Geo.distanceWords(toTurn.coerceAtLeast(0.0), metric)}, ${m.text}")
+        show("In ${Geo.distanceWords(toTurn.coerceAtLeast(0.0), units)}, ${m.text}")
 
         when {
             toTurn <= now -> {
@@ -84,11 +85,11 @@ class RouteFollower(
             }
             toTurn <= near && !warnedNear -> {
                 warnedNear = true; warnedFar = true
-                say("In ${Geo.distanceWords(toTurn, metric)}, ${lowerFirst(m.verbalBefore)}")
+                say("In ${Geo.distanceWords(toTurn, units)}, ${lowerFirst(m.verbalBefore)}")
             }
             toTurn <= far && !warnedFar && toTurn > near * 1.5 -> {
                 warnedFar = true
-                say("In ${Geo.distanceWords(toTurn, metric)}, ${lowerFirst(m.verbalBefore)}")
+                say("In ${Geo.distanceWords(toTurn, units)}, ${lowerFirst(m.verbalBefore)}")
             }
         }
     }
@@ -127,7 +128,7 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
     /** Fixes guidance follows: real GPS, or made-up ones moving along the route in practice mode. */
     private val fixes = MutableStateFlow<Fix?>(null)
     private var simJob: Job? = null
-    private val metric get() = app.settings.metric
+    private val units get() = app.settings.units
 
     private fun say(text: String, interrupt: Boolean = false) = app.speaker.say(text, interrupt)
     private fun show(text: String) { current.value = text; refreshSteps() }
@@ -162,16 +163,16 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
     }
 
     private suspend fun startRoute(here: Fix, place: Place, walking: Boolean) {
-        val route = router.route(here.pos, place.pos, walking, metric, here.course)
+        val route = router.route(here.pos, place.pos, walking, app.settings, here.course)
         follow(route, walking, onArrive = { arrive() })
-        status.value = "${Geo.distanceWords(route.lengthMeters, metric)} to ${place.name}, about ${minutes(route.seconds)}."
+        status.value = "${Geo.distanceWords(route.lengthMeters, units)} to ${place.name}, about ${minutes(route.seconds)}."
         say(status.value)
         follower?.begin()
         if (app.settings.simulate) simulate(route, walking)
     }
 
     private fun follow(route: Route, walking: Boolean, onArrive: () -> Unit) {
-        follower = RouteFollower(route, walking, metric,
+        follower = RouteFollower(route, walking, units,
             say = { say(it) }, show = { show(it) },
             onOffRoute = { reroute(walking, onArrive) }, onArrive = onArrive)
         refreshSteps()
@@ -185,7 +186,7 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
         say("Off route. Recalculating.", true)
         scope.launch {
             try {
-                val r = router.route(f.pos, target, walking, metric, f.course)
+                val r = router.route(f.pos, target, walking, app.settings, f.course)
                 follow(r, walking, onArrive)
                 follower?.begin()
             } catch (e: Exception) {
@@ -209,7 +210,7 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
     // ---- Public transit ----
 
     private suspend fun startTransit(from: LatLon, place: Place) {
-        val t = Transit.plan(from, place.pos, metric) ?: throw Exception("No public transit trip found to ${place.name}.")
+        val t = Transit.plan(from, place.pos, units) ?: throw Exception("No public transit trip found to ${place.name}.")
         if (t.legs.isEmpty()) throw Exception("No public transit trip found to ${place.name}.")
         trip = t
         status.value = "Transit trip to ${place.name}: ${t.summary}"
@@ -225,7 +226,7 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
         if (leg.walking) {
             // Walk to the stop with offline walking guidance when the map allows; otherwise straight-line hints.
             val here = fixes.value?.pos ?: leg.from.pos
-            runCatching { router.route(here, leg.to.pos, true, metric, fixes.value?.course) }.onSuccess { r ->
+            runCatching { router.route(here, leg.to.pos, true, app.settings, fixes.value?.course) }.onSuccess { r ->
                 follow(r, true, onArrive = { advanceLeg() })
                 if (app.settings.simulate) simulate(r, true)
             }
@@ -251,7 +252,7 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
         if (leg.walking) {
             if (follower == null) {
                 val d = Geo.distance(f.pos, leg.to.pos)
-                current.value = "${leg.to.name}: ${Geo.distanceWords(d, metric)}, ${Geo.compassWord(Geo.bearing(f.pos, leg.to.pos))}"
+                current.value = "${leg.to.name}: ${Geo.distanceWords(d, units)}, ${Geo.compassWord(Geo.bearing(f.pos, leg.to.pos))}"
                 if (d < 20) advanceLeg()
             }
             return

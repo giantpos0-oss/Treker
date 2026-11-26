@@ -18,7 +18,6 @@ import java.util.Date
 fun ReportsSection() {
     val context = LocalContext.current
     val app = context.applicationContext as TrekerApp
-    Heading("Map reports and fixes")
     Text("To report a map problem, use Report a map problem on the Explore tab, the Report a problem action on any place, " +
         "or Report a problem here in map browsing.", fontSize = 16.sp)
 

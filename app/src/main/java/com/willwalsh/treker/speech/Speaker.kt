@@ -14,20 +14,34 @@ import android.view.accessibility.AccessibilityManager
  * work with the screen off and in other apps. It uses the navigation audio channel, so music and
  * podcasts dip while it talks instead of stopping.
  */
-class Speaker(context: Context) {
+class Speaker(context: Context, private val settings: com.willwalsh.treker.Settings) {
     private val app = context.applicationContext
     private var ready = false
     private val pending = ArrayList<Pair<String, Boolean>>()
-    var rate: Float = 1f
-        set(v) { field = v; tts.setSpeechRate(v) }
+    /** Engines installed on the phone: package name to the name people see. */
+    val engines = androidx.compose.runtime.mutableStateListOf<Pair<String, String>>()
+    /** Voices in the current engine, by name, with a readable description. */
+    val voices = androidx.compose.runtime.mutableStateListOf<Pair<String, String>>()
 
-    private val tts: TextToSpeech = TextToSpeech(app) { status ->
-        ready = status == TextToSpeech.SUCCESS
-        if (ready) {
-            setUp()
-            val queued = pending.toList(); pending.clear()
-            queued.forEach { (t, i) -> say(t, i) }
+    var rate: Float = settings.speechRate
+        set(v) { field = v; if (ready) tts.setSpeechRate(v) }
+    var pitch: Float = settings.speechPitch
+        set(v) { field = v; if (ready) tts.setPitch(v) }
+
+    private var tts: TextToSpeech = create()
+
+    private fun create(): TextToSpeech {
+        ready = false
+        val listener = TextToSpeech.OnInitListener { status ->
+            ready = status == TextToSpeech.SUCCESS
+            if (ready) {
+                setUp()
+                val queued = pending.toList(); pending.clear()
+                queued.forEach { (t, i) -> say(t, i) }
+            }
         }
+        val engine = settings.speechEngine
+        return if (engine.isBlank()) TextToSpeech(app, listener) else TextToSpeech(app, listener, engine)
     }
 
     private fun setUp() {
@@ -38,6 +52,34 @@ class Speaker(context: Context) {
                 .build()
         )
         tts.setSpeechRate(rate)
+        tts.setPitch(pitch)
+        engines.clear()
+        engines.addAll(tts.engines.map { it.name to it.label })
+        val all = runCatching { tts.voices?.toList() }.getOrNull().orEmpty()
+            .filter { !it.isNetworkConnectionRequired }
+            .sortedWith(compareBy({ it.locale.displayName }, { it.name }))
+        voices.clear()
+        voices.addAll(all.map { v ->
+            val quality = when {
+                v.quality >= android.speech.tts.Voice.QUALITY_VERY_HIGH -> "very high quality"
+                v.quality >= android.speech.tts.Voice.QUALITY_HIGH -> "high quality"
+                else -> "normal quality"
+            }
+            v.name to "${v.locale.displayName}, ${v.name}, $quality"
+        })
+        val wanted = settings.speechVoice
+        if (wanted.isNotBlank()) all.firstOrNull { it.name == wanted }?.let { tts.voice = it }
+    }
+
+    /** Switch to the engine and voice chosen in settings. */
+    fun reload() {
+        runCatching { tts.stop(); tts.shutdown() }
+        tts = create()
+    }
+
+    fun setVoice(name: String) {
+        settings.speechVoice = name
+        if (ready) runCatching { tts.voices?.firstOrNull { it.name == name }?.let { tts.voice = it } }
     }
 
     /** Speaks [text]. [interrupt] cuts off whatever is being said; otherwise it waits its turn. */
@@ -45,7 +87,8 @@ class Speaker(context: Context) {
         if (text.isBlank()) return
         if (!ready) { pending.add(text to interrupt); return }
         val mode = if (interrupt) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
-        tts.speak(text, mode, Bundle(), "t-${System.nanoTime()}")
+        val params = Bundle().apply { putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, settings.speechVolume) }
+        tts.speak(text, mode, params, "t-${System.nanoTime()}")
     }
 
     fun stop() { if (ready) tts.stop() }

@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import com.willwalsh.treker.DirectionStyle
 import com.willwalsh.treker.LiveItem
 import com.willwalsh.treker.TrekerApp
+import com.willwalsh.treker.Verbosity
 import com.willwalsh.treker.data.AreaInfo
 import com.willwalsh.treker.data.Geo
 import com.willwalsh.treker.data.LatLon
@@ -53,8 +54,8 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
 
     fun onFix(fix: Fix) {
         val weak = fix.accuracy > MAX_ACCURACY
-        status.value = if (weak) "GPS is weak, accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.metric)}"
-        else "GPS good, accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.metric)}"
+        status.value = if (weak) "GPS is weak, accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.units)}"
+        else "GPS good, accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.units)}"
         if (settings.liveExploration && weak != gpsWeak) {
             gpsWeak = weak
             say(if (weak) "GPS signal weak. Street and place announcements paused." else "GPS signal good again.")
@@ -94,16 +95,19 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
             val old = announcedArea
             announcedArea = info
             val parts = ArrayList<String>()
-            fun changed(item: LiveItem, new: String?, prev: String?) {
-                if (settings.isOn(item) && !new.isNullOrBlank() && new != prev) parts.add(new)
+            val v = settings.areaVerbosity
+            fun changed(item: LiveItem, new: String?, prev: String?, detailed: String) {
+                if (settings.isOn(item) && !new.isNullOrBlank() && new != prev) parts.add(if (v == Verbosity.DETAILED) detailed else new)
             }
-            changed(LiveItem.COUNTRY, info.country, old?.country)
-            changed(LiveItem.STATE, info.state, old?.state)
-            changed(LiveItem.COUNTY, info.county, old?.county)
-            changed(LiveItem.CITY, info.city, old?.city)
-            changed(LiveItem.NEIGHBORHOOD, info.neighborhood, old?.neighborhood)
-            if (settings.isOn(LiveItem.ZIP) && !info.zip.isNullOrBlank() && info.zip != old?.zip) parts.add("zip code ${spellZip(info.zip)}")
-            if (settings.isOn(LiveItem.ADDRESS) && fix.accuracy <= MAX_ACCURACY && !info.address.isNullOrBlank() && info.address != old?.address) parts.add("near ${info.address}")
+            changed(LiveItem.COUNTRY, info.country, old?.country, "Entering ${info.country}")
+            changed(LiveItem.STATE, info.state, old?.state, "Entering the state of ${info.state}")
+            changed(LiveItem.COUNTY, info.county, old?.county, "Entering ${info.county}")
+            changed(LiveItem.CITY, info.city, old?.city, "Entering ${info.city}")
+            changed(LiveItem.NEIGHBORHOOD, info.neighborhood, old?.neighborhood, "Neighborhood: ${info.neighborhood}")
+            if (settings.isOn(LiveItem.ZIP) && !info.zip.isNullOrBlank() && info.zip != old?.zip)
+                parts.add(if (v == Verbosity.BRIEF) spellZip(info.zip) else "zip code ${spellZip(info.zip)}")
+            if (settings.isOn(LiveItem.ADDRESS) && fix.accuracy <= MAX_ACCURACY && !info.address.isNullOrBlank() && info.address != old?.address)
+                parts.add(if (v == Verbosity.BRIEF) info.address else "near ${info.address}")
             if (parts.isNotEmpty()) say(parts.joinToString(", "))
             if (street.value == null && !info.street.isNullOrBlank()) street.value = info.street
         }
@@ -126,7 +130,14 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
                 if (name != null && name != street.value) {
                     // Only announce a new street once it's confirmed twice, so crossing a street isn't "now on".
                     if (name == pendingStreet) pendingStreetCount++ else { pendingStreet = name; pendingStreetCount = 1 }
-                    if (pendingStreetCount >= 2) { street.value = name; say("On $name") }
+                    if (pendingStreetCount >= 2) {
+                        street.value = name
+                        say(when (settings.streetVerbosity) {
+                            Verbosity.BRIEF -> name
+                            Verbosity.NORMAL -> "On $name"
+                            Verbosity.DETAILED -> "On $name" + (fix.course?.let { ", heading ${Geo.compassWord(it)}" } ?: "")
+                        })
+                    }
                 }
             }
             if (settings.isOn(LiveItem.INTERSECTIONS)) {
@@ -134,11 +145,21 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
                 val now = System.currentTimeMillis()
                 val ahead = map.clusters
                     .map { it to Geo.distance(fix.pos, it.pos) }
-                    .filter { (i, d) -> d in 8.0..45.0 && Math.abs(Geo.angleDiff(course, Geo.bearing(fix.pos, i.pos))) < 30 }
+                    .filter { (i, d) -> d in 8.0..settings.intersectionDistance.meters && Math.abs(Geo.angleDiff(course, Geo.bearing(fix.pos, i.pos))) < 30 }
                     .minByOrNull { it.second }
                 if (ahead != null && now - (announcedIntersections[ahead.first.node] ?: 0L) > 180_000) {
                     announcedIntersections[ahead.first.node] = now
-                    say("Approaching ${ahead.first.spoken()}, ${Geo.distanceWords(ahead.second, settings.metric)}")
+                    val (i, d) = ahead
+                    val dist = Geo.distanceWords(d, settings.units)
+                    say(when (settings.intersectionVerbosity) {
+                        Verbosity.BRIEF -> i.spoken()
+                        Verbosity.NORMAL -> "Approaching ${i.spoken()}, $dist"
+                        Verbosity.DETAILED -> {
+                            val legs = map.legs(i)
+                            val kind = when { legs == 3 -> "T intersection"; legs >= 4 -> "$legs-way intersection"; else -> "intersection" }
+                            "Approaching $kind, ${i.spoken()}, $dist, ${direction(fix, i.pos)}"
+                        }
+                    })
                 }
             }
         }
@@ -168,7 +189,12 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
                 val key = p.placeId ?: p.name
                 if (now - (announcedPlaces[key] ?: 0L) < 15 * 60_000) continue
                 announcedPlaces[key] = now
-                say("${p.name}, ${direction(fix, p.pos)}, ${Geo.distanceWords(d, settings.metric)}")
+                val dist = Geo.distanceWords(d, settings.units)
+                say(when (settings.placeVerbosity) {
+                    Verbosity.BRIEF -> p.name
+                    Verbosity.NORMAL -> "${p.name}, ${direction(fix, p.pos)}, $dist"
+                    Verbosity.DETAILED -> listOf(p.name, p.kind, direction(fix, p.pos), dist).filter { it.isNotBlank() }.joinToString(", ")
+                })
             }
         }
     }
@@ -193,7 +219,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         a?.zip?.let { parts.add("zip code ${spellZip(it)}") }
         a?.country?.let { parts.add(it) }
         fix.course?.let { parts.add("heading ${Geo.compassWord(it)}") }
-        if (fix.accuracy > 25) parts.add("GPS accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.metric)}")
+        if (fix.accuracy > 25) parts.add("GPS accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.units)}")
         return if (parts.isEmpty()) "Looking up where you are." else parts.joinToString(", ") + "."
     }
 
@@ -202,7 +228,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         val fix = app.location.fix.value ?: return "No GPS position yet."
         val map = StreetMap.around(fix.pos) ?: return "There's no offline map for where you are."
         val i = map.clusters.minByOrNull { Geo.distance(fix.pos, it.pos) } ?: return "No intersections nearby."
-        return "${i.spoken()}, ${direction(fix, i.pos)}, ${Geo.distanceWords(Geo.distance(fix.pos, i.pos), settings.metric)}"
+        return "${i.spoken()}, ${direction(fix, i.pos)}, ${Geo.distanceWords(Geo.distance(fix.pos, i.pos), settings.units)}"
     }
 
     /** Places around you, nearest first, for the list on the Explore tab. */

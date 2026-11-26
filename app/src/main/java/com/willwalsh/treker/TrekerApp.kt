@@ -36,7 +36,7 @@ class TrekerApp : Application() {
         Offline.init(this)
         Corrections.init(this)
         Reports.init(this)
-        speaker = Speaker(this).also { it.rate = settings.speechRate }
+        speaker = Speaker(this, settings)
         location = LocationHub(this)
         compass = Compass(this)
         favorites = Favorites(this)

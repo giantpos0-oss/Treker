@@ -109,7 +109,7 @@ fun PlaceRow(place: Place, distance: Double?, app: TrekerApp, inFavorites: Boole
     val actions = placeActions(app, activity, place, inFavorites)
     val label = buildString {
         append(place.name)
-        if (distance != null) append(", ").append(Geo.distanceWords(distance, app.settings.metric))
+        if (distance != null) append(", ").append(Geo.distanceWords(distance, app.settings.units))
         if (place.kind.isNotBlank()) append(", ").append(place.kind)
         if (place.address.isNotBlank() && place.address != place.name) append(", ").append(place.address)
     }

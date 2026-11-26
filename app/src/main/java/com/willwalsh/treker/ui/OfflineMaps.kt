@@ -26,7 +26,6 @@ fun OfflineMapsSection() {
     var version by remember { mutableIntStateOf(0) }
     LaunchedEffect(Unit) { if (Regions.catalog.value.isEmpty()) Regions.loadCatalog() }
 
-    Heading("Offline maps")
     val installed = remember(version) { Offline.installed }
     if (installed.isEmpty()) Text("No maps downloaded yet. Treker needs the map for your area to work.", fontSize = 16.sp)
     for (r in installed) {

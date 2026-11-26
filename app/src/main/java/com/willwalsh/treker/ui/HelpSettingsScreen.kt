@@ -2,78 +2,234 @@ package com.willwalsh.treker.ui
 
 import android.content.Intent
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.willwalsh.treker.AnnounceDistance
 import com.willwalsh.treker.BuildConfig
 import com.willwalsh.treker.DirectionStyle
+import com.willwalsh.treker.LiveItem
+import com.willwalsh.treker.RouteType
+import com.willwalsh.treker.ShakeStrength
 import com.willwalsh.treker.TrekerApp
+import com.willwalsh.treker.Units
+import com.willwalsh.treker.Verbosity
+import com.willwalsh.treker.data.Geo
+import java.util.Locale
 
 private const val REPO = "https://github.com/giantpos0-oss/Treker/blob/main/docs"
+
+/** The pages of the Help and settings tab. */
+private enum class Page(val title: String) {
+    MAIN("Help and settings"),
+    SPEECH("Speech"),
+    ANNOUNCEMENTS("Announcements and verbosity"),
+    ROUTES("Routes"),
+    UNITS("Units and directions"),
+    GESTURES("Shake and What's Around"),
+    MAPS("Offline maps"),
+    REPORTS("Map reports and fixes"),
+    GUIDE("User guide"),
+}
 
 @Composable
 fun HelpSettingsScreen() {
     val context = LocalContext.current
-    val app = context.applicationContext as TrekerApp
-    val s = app.settings
-    val guide = remember { runCatching { context.assets.open("user-guide.md").bufferedReader().use { it.readText() } }.getOrDefault("") }
+    var page by rememberSaveable { mutableStateOf(Page.MAIN) }
+    BackHandler(enabled = page != Page.MAIN) { page = Page.MAIN }
 
     fun open(url: String) = runCatching {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-        BigButton("Open user guide in browser") { open("$REPO/user-guide.md") }
-        BigButton("Open release notes in browser") { open("$REPO/release-notes.md") }
-        Text("Treker version ${BuildConfig.VERSION_NAME}", fontSize = 16.sp)
-
-        OfflineMapsSection()
-        ReportsSection()
-
-        Heading("Settings")
-        SwitchRow("Use meters instead of feet", s.metric) { s.metric = it }
-        SwitchRow("Directions as clock face (off for compass directions)", s.directionStyle == DirectionStyle.CLOCK) {
-            s.directionStyle = if (it) DirectionStyle.CLOCK else DirectionStyle.COMPASS
+        if (page != Page.MAIN) {
+            BigButton("Back to Help and settings") { page = Page.MAIN }
+            Heading(page.title)
         }
-        SwitchRow("Vibrate in What's Around", s.vibrate) { s.vibrate = it }
-        SwitchRow("Practice mode: guidance moves along the route by itself", s.simulate) { s.simulate = it }
-
-        Text("Speech speed", fontSize = 18.sp, modifier = Modifier.padding(top = 12.dp))
-        Slider(
-            value = s.speechRate,
-            onValueChange = { s.speechRate = (Math.round(it * 10) / 10f); app.speaker.rate = s.speechRate },
-            onValueChangeFinished = { app.speaker.say("Speech speed ${s.speechRate}", true) },
-            valueRange = 0.5f..3f, steps = 24,
-            modifier = Modifier.semantics { contentDescription = "Speech speed"; stateDescription = "${s.speechRate}" },
-        )
-
-        Text("What's Around distance", fontSize = 18.sp, modifier = Modifier.padding(top = 12.dp))
-        for (r in listOf(50, 100, 150, 300, 500)) {
-            val words = com.willwalsh.treker.data.Geo.distanceWords(r.toDouble(), s.metric)
-            SwitchRow("Up to $words", s.placesRadius == r) { if (it) s.placesRadius = r }
+        when (page) {
+            Page.MAIN -> {
+                BigButton("Open user guide in browser") { open("$REPO/user-guide.md") }
+                BigButton("Open release notes in browser") { open("$REPO/release-notes.md") }
+                Text("Treker version ${BuildConfig.VERSION_NAME}", fontSize = 16.sp, modifier = Modifier.padding(vertical = 4.dp))
+                Heading("Settings")
+                for (p in listOf(Page.SPEECH, Page.ANNOUNCEMENTS, Page.ROUTES, Page.UNITS, Page.GESTURES, Page.MAPS, Page.REPORTS)) {
+                    BigButton(p.title) { page = p }
+                }
+                Heading("Help")
+                BigButton(Page.GUIDE.title) { page = Page.GUIDE }
+                Heading("Map data")
+                Text("Map data © OpenStreetMap contributors, available under the Open Database License. " +
+                    "Routes by Valhalla. Public transit trips by Transitous, transitous.org, from open timetable data. " +
+                    "Zip code areas from the U.S. Census Bureau.", fontSize = 16.sp)
+                BigButton("Transitous data sources") { open("https://transitous.org/sources/") }
+            }
+            Page.SPEECH -> SpeechSettings()
+            Page.ANNOUNCEMENTS -> AnnouncementSettings()
+            Page.ROUTES -> RouteSettings()
+            Page.UNITS -> UnitSettings()
+            Page.GESTURES -> GestureSettings()
+            Page.MAPS -> OfflineMapsSection()
+            Page.REPORTS -> ReportsSection()
+            Page.GUIDE -> {
+                val guide = remember { runCatching { context.assets.open("user-guide.md").bufferedReader().use { it.readText() } }.getOrDefault("") }
+                GuideText(guide)
+            }
         }
-
-        Heading("Help")
-        GuideText(guide)
-
-        Heading("Map data")
-        Text("Map data © OpenStreetMap contributors, available under the Open Database License. " +
-            "Routes by Valhalla. Public transit trips by Transitous, transitous.org, from open timetable data.", fontSize = 16.sp)
-        BigButton("Transitous data sources") { open("https://transitous.org/sources/") }
     }
+}
+
+/** A titled list of choices where exactly one is selected; screen readers hear it as radio buttons. */
+@Composable
+fun <T> Choices(title: String, options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit) {
+    Text(title, fontSize = 19.sp, modifier = Modifier.padding(top = 14.dp, bottom = 4.dp))
+    Column(Modifier.selectableGroup()) {
+        for ((value, label) in options) {
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                    .selectable(selected = value == selected, role = Role.RadioButton, onClick = { onSelect(value) }),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(selected = value == selected, onClick = null)
+                Text(label, fontSize = 17.sp, modifier = Modifier.padding(start = 8.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun LabeledSlider(label: String, value: Float, range: ClosedFloatingPointRange<Float>, steps: Int, spoken: (Float) -> String,
+                          onChange: (Float) -> Unit, onDone: () -> Unit) {
+    Text(label, fontSize = 18.sp, modifier = Modifier.padding(top = 12.dp))
+    Slider(
+        value = value, onValueChange = onChange, onValueChangeFinished = onDone,
+        valueRange = range, steps = steps,
+        modifier = Modifier.semantics { contentDescription = label; stateDescription = spoken(value) },
+    )
+}
+
+@Composable
+private fun SpeechSettings() {
+    val app = LocalContext.current.applicationContext as TrekerApp
+    val s = app.settings
+    val sp = app.speaker
+    var allLanguages by remember { mutableStateOf(false) }
+
+    Text("Treker's own voice speaks live exploration, What's Around and guidance, so it works with the screen off. " +
+        "It's separate from your screen reader's voice.", fontSize = 16.sp)
+    BigButton("Test speech") { sp.say("This is Treker. Approaching Main Street and Oak Avenue, 100 feet.", true) }
+
+    Choices("Speech engine", listOf("" to "Phone's default engine") + sp.engines.toList(), s.speechEngine) {
+        s.speechEngine = it; s.speechVoice = ""
+        sp.reload()
+        sp.say("Speech engine changed.", true)
+    }
+
+    val lang = Locale.getDefault().language
+    val voices = sp.voices.toList().filter { allLanguages || it.first.startsWith(lang) || it.second.startsWith(Locale.getDefault().displayLanguage) }
+    SwitchRow("Show voices for all languages", allLanguages) { allLanguages = it }
+    if (sp.voices.isEmpty()) Text("This engine doesn't list its voices. Its default voice is used.", fontSize = 16.sp)
+    else Choices("Voice", listOf("" to "Engine's default voice") + voices, s.speechVoice) {
+        sp.setVoice(it)
+        if (it.isBlank()) sp.reload()
+        sp.say("This is the voice you chose.", true)
+    }
+
+    LabeledSlider("Speech rate", s.speechRate, 0.5f..3f, 24, { "%.1f".format(it) },
+        { s.speechRate = Math.round(it * 10) / 10f; sp.rate = s.speechRate }, { sp.say("Speech rate ${"%.1f".format(s.speechRate)}", true) })
+    LabeledSlider("Pitch", s.speechPitch, 0.5f..2f, 14, { "%.1f".format(it) },
+        { s.speechPitch = Math.round(it * 10) / 10f; sp.pitch = s.speechPitch }, { sp.say("Pitch ${"%.1f".format(s.speechPitch)}", true) })
+    LabeledSlider("Volume", s.speechVolume, 0.2f..1f, 7, { "${(it * 100).toInt()} percent" },
+        { s.speechVolume = Math.round(it * 10) / 10f }, { sp.say("Volume ${(s.speechVolume * 100).toInt()} percent", true) })
+}
+
+@Composable
+private fun AnnouncementSettings() {
+    val app = LocalContext.current.applicationContext as TrekerApp
+    val s = app.settings
+    fun opts(brief: String, normal: String, detailed: String) = listOf(
+        Verbosity.BRIEF to "Brief: $brief", Verbosity.NORMAL to "Normal: $normal", Verbosity.DETAILED to "Detailed: $detailed")
+
+    Text("Choose what live exploration announces, and how much it says for each.", fontSize = 16.sp)
+    Choices("Streets", opts("Main Street", "On Main Street", "On Main Street, heading north"), s.streetVerbosity) { s.streetVerbosity = it }
+    Choices("Intersections", opts("Main Street and Oak Avenue", "Approaching Main Street and Oak Avenue, 100 feet",
+        "Approaching 4-way intersection, Main Street and Oak Avenue, 100 feet, 12 o'clock"), s.intersectionVerbosity) { s.intersectionVerbosity = it }
+    Choices("Announce intersections ahead", AnnounceDistance.entries.map { it to it.label }, s.intersectionDistance) { s.intersectionDistance = it }
+    Choices("Places you pass", opts("Corner Cafe", "Corner Cafe, 3 o'clock, 50 feet", "Corner Cafe, Cafe, 3 o'clock, 50 feet"), s.placeVerbosity) { s.placeVerbosity = it }
+    Choices("Country, state, county, city and zip code", opts("Austin", "Austin, zip code 7 8 7 0 1", "Entering Austin, zip code 7 8 7 0 1"),
+        s.areaVerbosity) { s.areaVerbosity = it }
+
+    Text("Announce while moving", fontSize = 19.sp, modifier = Modifier.padding(top = 14.dp, bottom = 4.dp))
+    for (item in LiveItem.entries) SwitchRow(item.label, s.isOn(item)) { s.set(item, it) }
+}
+
+@Composable
+private fun RouteSettings() {
+    val app = LocalContext.current.applicationContext as TrekerApp
+    val s = app.settings
+    Choices("Route type", listOf(RouteType.FASTEST to "Fastest", RouteType.SHORTEST to "Shortest distance"), s.routeType) { s.routeType = it }
+
+    Text("Walking", fontSize = 19.sp, modifier = Modifier.padding(top = 14.dp, bottom = 4.dp))
+    SwitchRow("Avoid stairs", s.avoidStairs) { s.avoidStairs = it }
+    SwitchRow("Prefer sidewalks and footpaths", s.preferSidewalks) { s.preferSidewalks = it }
+    SwitchRow("Avoid alleys", s.avoidAlleys) { s.avoidAlleys = it }
+    SwitchRow("Prefer lit streets", s.preferLitStreets) { s.preferLitStreets = it }
+
+    Text("Driving", fontSize = 19.sp, modifier = Modifier.padding(top = 14.dp, bottom = 4.dp))
+    SwitchRow("Avoid highways", s.avoidHighways) { s.avoidHighways = it }
+    SwitchRow("Avoid toll roads", s.avoidTolls) { s.avoidTolls = it }
+    SwitchRow("Avoid ferries", s.avoidFerries) { s.avoidFerries = it }
+
+    Text("Testing", fontSize = 19.sp, modifier = Modifier.padding(top = 14.dp, bottom = 4.dp))
+    SwitchRow("Practice mode: guidance moves along the route by itself", s.simulate) { s.simulate = it }
+    Text("Route settings apply to the next route you start.", fontSize = 16.sp)
+}
+
+@Composable
+private fun UnitSettings() {
+    val app = LocalContext.current.applicationContext as TrekerApp
+    val s = app.settings
+    Choices("Distances", Units.entries.map { it to it.label }, s.units) { s.units = it }
+    Choices("Directions", DirectionStyle.entries.map { it to it.label }, s.directionStyle) { s.directionStyle = it }
+}
+
+@Composable
+private fun GestureSettings() {
+    val app = LocalContext.current.applicationContext as TrekerApp
+    val s = app.settings
+    SwitchRow("Shake the phone for Where am I", s.shakeWhereAmI) { s.shakeWhereAmI = it }
+    Choices("How hard to shake", ShakeStrength.entries.map { it to it.label }, s.shakeStrength) { s.shakeStrength = it }
+    Text("Works with the screen off and in other apps, while live exploration is running. " +
+        "If walking sets it off, choose Firm; if it's hard to trigger, choose Light.", fontSize = 16.sp)
+    SwitchRow("Vibrate for shakes and in What's Around", s.vibrate) { s.vibrate = it }
+    Choices("What's Around distance", listOf(50, 100, 150, 300, 500).map { it to "Up to ${Geo.distanceWords(it.toDouble(), s.units)}" },
+        s.placesRadius) { s.placesRadius = it }
 }
 
 /** Shows the bundled user guide: # lines become headings, the rest paragraphs. */
