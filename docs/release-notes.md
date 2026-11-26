@@ -1,5 +1,11 @@
 # Treker release notes
 
+## Version 0.1.8
+
+- The Where am I button is back on the Explore tab, below the GPS line. It, shaking the phone, and the summary when Treker starts all say the same thing, in HumanWare's style, for example: Heading north. 1303 Emily Morgan Circle. Next intersection in 250 feet, 3-way, Emily Morgan Circle crossing Southern Place. Richmond, Fort Bend County, Texas, zip code 7 7 4 0 6.
+- Intersections are now said as one street crossing another, with the street you're on first, for example Emily Morgan Circle crossing Southern Place, in live exploration, Where am I and map browsing.
+- Exact house numbers: maps now include real address points, where counties publish them, so Treker can say your exact house number instead of an estimate. Where there are none, it still works the number out from the street's ranges and says about. This needs the rebuilt maps; update your map once it shows a newer build date.
+
 ## Version 0.1.7
 
 - New: when Treker starts, it says where you are once, as soon as it knows: street, address, city, zip code and so on, whatever your announcement switches are set to.

@@ -217,14 +217,14 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
                     announcedIntersections[ahead.first.node] = now
                     val (i, d) = ahead
                     val dist = Geo.distanceWords(d, settings.units)
-                    lastIntersection.value = "${i.spoken()}, $dist"
+                    lastIntersection.value = "${i.spoken(street.value)}, $dist"
                     say(when (settings.intersectionVerbosity) {
-                        Verbosity.BRIEF -> i.spoken()
-                        Verbosity.NORMAL -> "Approaching ${i.spoken()}, $dist"
+                        Verbosity.BRIEF -> i.spoken(street.value)
+                        Verbosity.NORMAL -> "Approaching ${i.spoken(street.value)}, $dist"
                         Verbosity.DETAILED -> {
                             val legs = map.legs(i)
-                            val kind = when { legs == 3 -> "T intersection"; legs >= 4 -> "$legs-way intersection"; else -> "intersection" }
-                            words("Approaching $kind", i.spoken(), dist, direction(fix, i.pos))
+                            val kind = if (legs >= 3) "$legs-way intersection" else "intersection"
+                            words("Approaching $kind", i.spoken(street.value), dist, direction(fix, i.pos))
                         }
                     })
                 }
@@ -302,18 +302,41 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         }
     }
 
-    /** "Where am I": everything known about this spot, regardless of the on/off settings. */
-    fun whereAmI(): String {
+    /**
+     * Where am I, in HumanWare's style:
+     * "Heading north. 1303 Emily Morgan Circle. Next intersection in 250 feet, 3-way, Emily Morgan Circle
+     * crossing Southern Place. Richmond, Fort Bend County, Texas, zip code 7 7 4 0 6."
+     */
+    suspend fun whereAmI(): String {
         val fix = app.location.fix.value ?: return "No GPS position yet."
-        val a = area.value
         val parts = ArrayList<String>()
-        street.value?.let { parts.add("On $it") }
-        if (a?.address != null) parts.add(addressWords(a, false))
-        listOfNotNull(a?.neighborhood, a?.city, a?.county, a?.state).forEach { parts.add(it) }
-        a?.zip?.let { parts.add("zip code ${spellZip(it)}") }
-        a?.country?.let { parts.add(it) }
-        if (fix.accuracy > MAX_ACCURACY) parts.add("GPS is weak, accurate only to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.units)}")
-        return if (parts.isEmpty()) "Looking up where you are." else parts.joinToString(", ") + "."
+        // Heading: the way you're walking, else the way the phone points (read briefly), else the way you last walked.
+        val heading = fix.course ?: app.compass.heading.value ?: run {
+            if (!app.compass.available) null else {
+                app.compass.start()
+                kotlinx.coroutines.delay(700)
+                app.compass.heading.value.also { app.compass.stop() }
+            }
+        } ?: lastCourse?.takeIf { System.currentTimeMillis() - lastCourseTime < 120_000 }
+        heading?.let { parts.add("Heading ${Geo.compassWord(it)}.") }
+
+        val map = StreetMap.around(fix.pos)
+        val a = area.value ?: runCatching { Offline.areaInfo(fix.pos, map, fix.course) }.getOrNull()
+        val streetName = street.value ?: a?.street
+        when {
+            a?.address != null -> parts.add((if (a.addressEstimated) "About " else "") + a.address + ".")
+            streetName != null -> parts.add("On $streetName.")
+        }
+        map?.nextIntersection(fix.pos, heading, streetName)?.let { n ->
+            val ways = if (n.legs >= 3) "${n.legs}-way, " else ""
+            parts.add("${if (heading != null) "Next" else "Nearest"} intersection in ${Geo.distanceWords(n.distance, settings.units)}, " +
+                "$ways${n.intersection.spoken(streetName)}.")
+        }
+        val place = listOfNotNull(a?.neighborhood, a?.city, a?.county, a?.state).joinToString(", ")
+        val zip = a?.zip?.let { "zip code ${spellZip(it)}" }
+        listOf(place, zip).filter { !it.isNullOrBlank() }.joinToString(", ").takeIf { it.isNotBlank() }?.let { parts.add("$it.") }
+        if (fix.accuracy > MAX_ACCURACY) parts.add("GPS is only accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.units)}.")
+        return if (parts.isEmpty()) "Looking up where you are." else parts.joinToString(" ")
     }
 
     /** The nearest intersection, for the "Nearest intersection" button. */

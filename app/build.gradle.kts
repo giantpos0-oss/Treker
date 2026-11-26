@@ -25,8 +25,8 @@ android {
         applicationId = "com.willwalsh.treker"
         minSdk = 26
         targetSdk = 36
-        versionCode = 8
-        versionName = "0.1.7"
+        versionCode = 9
+        versionName = "0.1.8"
         // Only 64-bit ARM, which every Android phone from the last several years uses. Including the
         // routing engine for every processor type made the download nearly 500 megabytes.
         ndk { abiFilters += listOf("arm64-v8a") }

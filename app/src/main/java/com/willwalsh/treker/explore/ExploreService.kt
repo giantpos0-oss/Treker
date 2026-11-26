@@ -52,7 +52,7 @@ class ExploreService : LifecycleService() {
             onShake = {
                 if (app.settings.shakeWhereAmI) {
                     if (app.settings.vibrate) app.speaker.tick(60)
-                    app.speaker.say(app.explorer.whereAmI(), interrupt = true)
+                    lifecycleScope.launch { app.speaker.say(app.explorer.whereAmI(), interrupt = true) }
                 }
             },
             onMotion = { lastMotion = System.currentTimeMillis(); app.location.setLowPower(false) },

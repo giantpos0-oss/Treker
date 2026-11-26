@@ -30,6 +30,7 @@ Live exploration announces information as you move, all the time, unless you've 
 
 Below that is a line saying how good the GPS signal is.
 
+- Where am I says where you are, in HumanWare's style: the way you're heading, then your address with the number first, then the next intersection along your street, how far it is and how many ways it has, then your city, county, state and zip code. For example: Heading north. 1303 Emily Morgan Circle. Next intersection in 250 feet, 3-way, Emily Morgan Circle crossing Southern Place. Richmond, Fort Bend County, Texas, zip code 7 7 4 0 6. If you're standing still, the heading comes from the way the top of your phone points. If your house number is worked out from the street's number ranges rather than mapped, it starts with About. Shaking the phone does the same as this button.
 - Nearest intersection says the closest intersection, its direction and distance.
 - Places nearby lists the places around you, nearest first. Each place has actions, described under Place actions below.
 
@@ -48,7 +49,7 @@ On the Explore tab, under Announce while moving, each piece of information live 
 - Approaching intersections
 - Places you pass
 
-Each switch that's on also shows the latest information for it, so you can check it any time by moving through the switches with your screen reader, for example City: Austin, switch on; or Approaching intersections: Main Street and Oak Avenue, 100 feet, switch on. A switch that's off shows only its name.
+Each switch that's on also shows the latest information for it, so you can check it any time by moving through the switches with your screen reader, for example City: Austin, switch on; or Approaching intersections: Main Street crossing Oak Avenue, 100 feet, switch on. A switch that's off shows only its name.
 
 Country, state, county, city, neighborhood, zip code and street address are announced when they change. Street name is announced when you move onto a different street. Approaching intersections are announced when an intersection is ahead of you in the direction you're walking. Places you pass are announced when you come within about 35 meters of them. Everything is looked up in the offline map, so live exploration works without an internet connection.
 
@@ -116,7 +117,7 @@ Treker is built so it doesn't tell you something wrong with confidence.
 - A trail or footpath, such as one behind your house, is only named when you're on it; otherwise the street nearby wins.
 - A divided road, with separate lanes each way, is announced as one intersection, not two.
 - Zip codes come from the U.S. Census Bureau's zip code areas, so they're right even where no one has mapped addresses.
-- The nearest street address is taken from the street you're on. Where the map has no house mapped close by, Treker works out your house number from the Census Bureau's house number ranges for your street and which side of it you're on, and says about in front of it, for example about 1303 Emily Morgan Circle, because it's an estimate.
+- The nearest street address is taken from the street you're on. Where the map has no house mapped close by, Treker uses the real address points counties publish where there are any, and otherwise works out your house number from the Census Bureau's house number ranges for your street and which side of it you're on, and says about in front of it, for example about 1303 Emily Morgan Circle, because it's an estimate.
 - Outside city limits, as in many neighborhoods, Treker gives the city your mail goes to, like Richmond.
 - Every new version of Treker is checked by automatic tests of distances, directions, which street you're on, intersections, turn announcements and noticing when you leave a route. Every map is checked before it's published, so a broken map never reaches your phone.
 
@@ -148,7 +149,7 @@ Your fixes are listed on the Help and settings tab, under Map reports and fixes,
 
 # Shake for Where am I
 
-Shake your phone firmly, twice, to hear Where am I: your street, nearest address, city and zip code. You can also find each of these, at any time, by moving through the switches under Announce while moving on the Explore tab. It works with the screen off and while you're in another app, as long as live exploration is running. You can switch it off, or change how hard you have to shake, in Help and settings, under Shake and What's Around.
+Shake your phone firmly, twice, to hear Where am I, the same as the Where am I button on the Explore tab. You can also find each of these, at any time, by moving through the switches under Announce while moving on the Explore tab. It works with the screen off and while you're in another app, as long as live exploration is running. You can switch it off, or change how hard you have to shake, in Help and settings, under Shake and What's Around.
 
 # Help and settings tab
 

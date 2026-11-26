@@ -51,6 +51,7 @@ fun ExploreScreen() {
             BigButton("Get the offline map") { AppNav.tab.value = Tab.HELP }
         }
 
+        BigButton("Where am I") { scope.launch { app.speaker.say(app.explorer.whereAmI(), true) } }
         BigButton("Nearest intersection") { scope.launch { app.speaker.say(app.explorer.nearestIntersection(), true) } }
         BigButton("Places nearby") {
             scope.launch {

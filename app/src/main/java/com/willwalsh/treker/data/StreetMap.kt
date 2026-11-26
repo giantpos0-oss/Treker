@@ -8,10 +8,16 @@ data class Way(val id: Long, val name: String, val kind: String, val nodes: List
 
 /** A spot where two or more differently named streets meet. */
 data class Intersection(val node: Long, val pos: LatLon, val streets: List<String>) {
-    fun spoken(): String = when (streets.size) {
-        0, 1 -> streets.firstOrNull() ?: "Unnamed intersection"
-        2 -> "${streets[0]} and ${streets[1]}"
-        else -> streets.dropLast(1).joinToString(", ") + " and " + streets.last()
+    /** HumanWare style: "Main Street crossing Oak Avenue", with [from] (the street you're on) first. */
+    fun spoken(from: String? = null): String {
+        if (streets.isEmpty()) return "Unnamed intersection"
+        val first = streets.firstOrNull { it == from } ?: streets.first()
+        val others = streets.filter { it != first }
+        return when (others.size) {
+            0 -> first
+            1 -> "$first crossing ${others[0]}"
+            else -> "$first crossing " + others.dropLast(1).joinToString(", ") + " and " + others.last()
+        }
     }
 }
 
@@ -56,6 +62,69 @@ class StreetArea(val center: LatLon, val radius: Double, val ways: List<Way>, va
         }
     }
     fun clusterOf(node: Long): Int? = clusterOfNode[node]
+
+    /** The next intersection along a street, how far, and how many ways it has. */
+    data class Ahead(val intersection: Intersection, val distance: Double, val legs: Int)
+
+    /**
+     * The next intersection along [streetName] (or the nearest street) from [p], going the way you're
+     * heading. Without a heading, the nearer of the two either way.
+     */
+    fun nextIntersection(p: LatLon, heading: Double?, streetName: String?): Ahead? {
+        var bw: Way? = null; var bi = 0; var bd = Double.MAX_VALUE
+        for (w in ways) {
+            if (w.name.isBlank() || (streetName != null && w.name != streetName)) continue
+            for (i in 0 until w.nodes.size - 1) {
+                val a = nodes[w.nodes[i]] ?: continue
+                val b = nodes[w.nodes[i + 1]] ?: continue
+                val d = distanceToSegment(p, a, b)
+                if (d < bd) { bd = d; bw = w; bi = i }
+            }
+        }
+        val way = bw ?: return null
+        if (bd > 60) return null
+        val a = nodes[way.nodes[bi]]!!; val b = nodes[way.nodes[bi + 1]]!!
+        val t = projectT(p, a, b)
+        val here = LatLon(a.lat + t * (b.lat - a.lat), a.lon + t * (b.lon - a.lon))
+
+        fun walk(dir: Int): Pair<Intersection, Double>? {
+            var w = way
+            var step = dir
+            var idx = if (dir > 0) bi + 1 else bi
+            var prev = here
+            var dist = 0.0
+            for (guard in 0 until 5000) {
+                val node = w.nodes[idx]
+                val pos = nodes[node] ?: return null
+                dist += Geo.distance(prev, pos); prev = pos
+                val inter = clusterIntersection(node)
+                if (inter != null && dist > 8) return inter to dist
+                var next = idx + step
+                if (next !in w.nodes.indices) {
+                    // The street carries on as another piece with the same name.
+                    val cont = waysAt[node].orEmpty().firstOrNull { it.id != w.id && it.name == w.name } ?: return null
+                    val ci = cont.nodes.indexOf(node)
+                    step = if (ci == 0) 1 else -1
+                    w = cont
+                    next = ci + step
+                    if (next !in w.nodes.indices) return null
+                }
+                idx = next
+            }
+            return null
+        }
+        val fwd = walk(1); val back = walk(-1)
+        val pick = when {
+            fwd == null -> back
+            back == null -> fwd
+            heading != null -> {
+                val bf = Geo.bearing(here, nodes[way.nodes[bi + 1]]!!)
+                if (Math.abs(Geo.angleDiff(heading, bf)) <= 90) fwd else back
+            }
+            else -> if (fwd.second <= back.second) fwd else back
+        } ?: return null
+        return Ahead(pick.first, pick.second, legs(pick.first))
+    }
 
     /** How many ways lead out of an intersection: 3 for a T, 4 for a crossroads. */
     fun legs(i: Intersection): Int {

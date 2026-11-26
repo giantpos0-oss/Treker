@@ -413,6 +413,35 @@ def load_ranges(db, paths, bbox):
     print(f"  {rid} house number ranges", file=sys.stderr)
 
 
+def tidy_street(name):
+    """Address files often shout ("EMILY MORGAN CIR"); say it the normal way, in full."""
+    name = " ".join(name.split())
+    if name.isupper() or name.islower():
+        name = " ".join(w if any(ch.isdigit() for ch in w) else w.capitalize() for w in name.split())
+    return full_street_name(name)
+
+
+def load_points(db, path):
+    """Real address points (each house's own location), so house numbers are exact, not estimated."""
+    import csv
+    rows, n = [], 0
+    with open(path, newline="", encoding="utf-8") as f:
+        for r in csv.DictReader(f):
+            num, street = (r.get("number") or "").strip(), (r.get("street") or "").strip()
+            if not num or not street:
+                continue
+            try:
+                lat, lon = float(r["lat"]), float(r["lon"])
+            except (KeyError, ValueError):
+                continue
+            rows.append((num, tidy_street(street), "", (r.get("postcode") or "")[:5], lat, lon, cell_of(lat, lon)))
+            n += 1
+            if len(rows) > 50000:
+                db.executemany("INSERT INTO addresses VALUES (?,?,?,?,?,?,?)", rows); rows.clear()
+    db.executemany("INSERT INTO addresses VALUES (?,?,?,?,?,?,?)", rows)
+    print(f"  {n} address points", file=sys.stderr)
+
+
 def build_zip_cities(db):
     """The city each zip code's mail goes to, for places outside any city's limits (like Pecan Grove,
     whose mail says Richmond): the city most addresses in that zip code give."""
@@ -478,6 +507,7 @@ def main():
                     help="Census shapefiles for state, county and city areas (tl_*_state, tl_*_county, tl_*_place)")
     ap.add_argument("--country", help="Country name for the whole region, e.g. United States")
     ap.add_argument("--addrfeat", nargs="*", default=[], help="Census ADDRFEAT shapefiles: house number ranges along streets")
+    ap.add_argument("--points", help="CSV of address points (number,street,unit,postcode,lat,lon), e.g. from Overture Maps")
     args = ap.parse_args()
 
     print("Pass 1: finding junctions", file=sys.stderr)
@@ -525,6 +555,8 @@ def main():
 
     if args.addrfeat:
         load_ranges(db, args.addrfeat, b)
+    if args.points:
+        load_points(db, args.points)
     build_zip_cities(db)
 
     arows = []

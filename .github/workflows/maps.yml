@@ -134,13 +134,43 @@ jobs:
           ls census/addr/*.shp | wc -l
           ls -la census
 
+      # Real address points from Overture Maps (mostly OpenAddresses, i.e. county address data), so house
+      # numbers are exact where they exist. Optional: if it fails, house numbers are estimated instead.
+      - name: Download address points
+        continue-on-error: true
+        env:
+          FIPS: ${{ matrix.region.fips }}
+        run: |
+          pip install duckdb pyshp >/dev/null
+          rel=$(curl -fsL "https://overturemaps-us-west-2.s3.us-west-2.amazonaws.com/?list-type=2&prefix=release/&delimiter=/" \
+            | grep -o '<Prefix>release/[^<]*/</Prefix>' | sed 's#<Prefix>release/##; s#/</Prefix>##' | sort | tail -1)
+          echo "Overture release: $rel"
+          python3 - "$rel" <<'PY'
+          import sys, os, duckdb, shapefile
+          rel = sys.argv[1]
+          r = shapefile.Reader("census/tl_2025_us_state.shp")
+          f = [x[0] for x in r.fields[1:]]
+          for sr in r.iterShapeRecords():
+              if sr.record[f.index("STATEFP")] == os.environ["FIPS"]:
+                  x0, y0, x1, y1 = sr.shape.bbox
+                  break
+          con = duckdb.connect()
+          con.execute("INSTALL httpfs; LOAD httpfs; SET s3_region='us-west-2';")
+          con.execute(f"""COPY (
+              SELECT number, street, unit, postcode, bbox.ymin AS lat, bbox.xmin AS lon
+              FROM read_parquet('s3://overturemaps-us-west-2/release/{rel}/theme=addresses/type=address/*', hive_partitioning=1)
+              WHERE country = 'US' AND bbox.xmin BETWEEN {x0} AND {x1} AND bbox.ymin BETWEEN {y0} AND {y1}
+          ) TO 'work/points.csv' (HEADER)""")
+          print(con.execute("SELECT COUNT(*) FROM read_csv_auto('work/points.csv')").fetchone()[0], "address points")
+          PY
+
       - name: Build street database
         run: |
           pip install osmium shapely numpy pyshp
           python3 tools/build_region.py work/region.osm.pbf "work/$ID.db" --id "$ID" --name "$NAME" --country "United States" \
             --zcta census/tl_2025_us_zcta520.shp \
             --census census/tl_2025_us_state.shp census/tl_2025_us_county.shp $(ls census/tl_2025_${{ matrix.region.fips }}_place.shp 2>/dev/null) \
-            --addrfeat census/addr/*.shp
+            --addrfeat census/addr/*.shp $( [ -s work/points.csv ] && echo "--points work/points.csv" )
           gzip -6 -c "work/$ID.db" > "work/$ID.db.gz"
 
       - name: Build routing tiles with Valhalla
