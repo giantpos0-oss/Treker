@@ -67,7 +67,7 @@ jobs:
     timeout-minutes: 340
     strategy:
       fail-fast: false
-      max-parallel: 8
+      max-parallel: 4
       matrix:
         region: ${{ fromJson(needs.plan.outputs.regions) }}
     name: ${{ matrix.region.name }}
@@ -86,29 +86,40 @@ jobs:
       - name: Download OpenStreetMap extract
         run: |
           mkdir -p work
-          curl -fL --retry 5 --retry-delay 20 -o work/region.osm.pbf "https://download.geofabrik.de/${{ matrix.region.path }}-latest.osm.pbf"
+          # The download site turns away bursts of connections, so keep trying for up to about 20 minutes.
+          curl -fL --retry 12 --retry-delay 90 --retry-all-errors --connect-timeout 60 \
+            -o work/region.osm.pbf "https://download.geofabrik.de/${{ matrix.region.path }}-latest.osm.pbf"
           ls -la work
 
-      # Exact zip code areas from the U.S. Census Bureau (public domain), downloaded once and cached.
-      - name: Zip code areas cache
+      # Zip code, state, county and city areas from the U.S. Census Bureau (public domain), cached.
+      - name: Census areas cache
         uses: actions/cache@v4
         with:
-          path: zcta
-          key: zcta-tl_2025_us_zcta520
+          path: census
+          key: census-tl_2025-${{ matrix.region.fips }}
 
-      - name: Download zip code areas
+      - name: Download Census areas
+        env:
+          FIPS: ${{ matrix.region.fips }}
         run: |
-          if [ ! -f zcta/tl_2025_us_zcta520.shp ]; then
-            mkdir -p zcta
-            curl -fL --retry 5 --retry-delay 30 -o zcta/z.zip https://www2.census.gov/geo/tiger/TIGER2025/ZCTA520/tl_2025_us_zcta520.zip
-            unzip -o -q zcta/z.zip -d zcta && rm zcta/z.zip
-          fi
-          ls -la zcta
+          mkdir -p census
+          get() {
+            [ -f "census/$1.shp" ] && return
+            curl -fL --retry 8 --retry-delay 30 --retry-all-errors -o "census/$1.zip" "https://www2.census.gov/geo/tiger/TIGER2025/$2/$1.zip"
+            unzip -o -q "census/$1.zip" -d census && rm "census/$1.zip"
+          }
+          get tl_2025_us_zcta520 ZCTA520
+          get tl_2025_us_state STATE
+          get tl_2025_us_county COUNTY
+          get "tl_2025_${FIPS}_place" PLACE || echo "No Census places for this region"
+          ls -la census
 
       - name: Build street database
         run: |
           pip install osmium shapely numpy pyshp
-          python3 tools/build_region.py work/region.osm.pbf "work/$ID.db" --id "$ID" --name "$NAME" --zcta zcta/tl_2025_us_zcta520.shp
+          python3 tools/build_region.py work/region.osm.pbf "work/$ID.db" --id "$ID" --name "$NAME" --country "United States" \
+            --zcta census/tl_2025_us_zcta520.shp \
+            --census census/tl_2025_us_state.shp census/tl_2025_us_county.shp $(ls census/tl_2025_${{ matrix.region.fips }}_place.shp 2>/dev/null)
           gzip -6 -c "work/$ID.db" > "work/$ID.db.gz"
 
       - name: Build routing tiles with Valhalla

@@ -314,6 +314,27 @@ def zcta_areas(path, bbox):
     print(f"  {n} zip code areas", file=sys.stderr)
 
 
+def census_areas(path, bbox, level):
+    """Census Bureau boundaries (public domain) of one kind that overlap this region."""
+    import shapefile  # pyshp
+    region = box(bbox[1], bbox[0], bbox[3], bbox[2])
+    reader = shapefile.Reader(path)
+    fields = [f[0] for f in reader.fields[1:]]
+    name_field = "NAMELSAD" if level == "county" and "NAMELSAD" in fields else "NAME"
+    n = 0
+    for sr in reader.iterShapeRecords():
+        x0, y0, x1, y1 = sr.shape.bbox
+        if x1 < bbox[1] or x0 > bbox[3] or y1 < bbox[0] or y0 > bbox[2]:
+            continue
+        geom = shape(sr.shape.__geo_interface__)
+        if not geom.intersects(region):
+            continue
+        geom = geom.simplify(0.00005, preserve_topology=True)
+        n += 1
+        yield (level, sr.record[fields.index(name_field)], geom)
+    print(f"  {n} {level} areas from {path}", file=sys.stderr)
+
+
 def check(db):
     """Stops the build if the map is clearly broken, so a bad map never reaches anyone's phone."""
     q = lambda sql: db.execute(sql).fetchone()[0]
@@ -321,7 +342,9 @@ def check(db):
     if q("SELECT COUNT(*) FROM streets") < 100: problems.append("almost no streets")
     if q("SELECT COUNT(*) FROM junctions") < 50: problems.append("almost no intersections")
     if q("SELECT COUNT(*) FROM areas WHERE level = 'state'") < 1: problems.append("no state boundary")
-    if q("SELECT COUNT(*) FROM areas WHERE level = 'city'") < 1: problems.append("no city boundaries")
+    # Very small regions (like the U.S. Virgin Islands) may have no Census places.
+    if q("SELECT COUNT(*) FROM areas WHERE level = 'city'") < 1 and q("SELECT COUNT(*) FROM streets") > 5000:
+        problems.append("no city boundaries")
     if q("SELECT COUNT(*) FROM pois") < 50: problems.append("almost no places")
     return problems
 
@@ -355,7 +378,10 @@ def main():
     ap.add_argument("out")
     ap.add_argument("--id", required=True)
     ap.add_argument("--name", required=True)
-    ap.add_argument("--zcta", help="Census ZCTA shapefile (.shp or .zip) for exact zip code areas")
+    ap.add_argument("--zcta", help="Census ZCTA shapefile for exact zip code areas")
+    ap.add_argument("--census", nargs="*", default=[],
+                    help="Census shapefiles for state, county and city areas (tl_*_state, tl_*_county, tl_*_place)")
+    ap.add_argument("--country", help="Country name for the whole region, e.g. United States")
     args = ap.parse_args()
 
     print("Pass 1: finding junctions", file=sys.stderr)
@@ -387,9 +413,19 @@ def main():
         from shapely.geometry import Point
         p2.areas.append((level, name, Point(lon, lat).buffer(0.004, quad_segs=4)))
 
+    b = p2.bbox
     if args.zcta:
-        b = p2.bbox
         p2.areas = [a for a in p2.areas if a[0] != "zip"] + list(zcta_areas(args.zcta, b))
+    # State, county and city boundaries from the Census Bureau replace OpenStreetMap's: regional
+    # OpenStreetMap extracts cut big boundaries at their edges, and the Census ones are official.
+    for path in args.census:
+        level = "state" if "_state" in path else "county" if "_county" in path else "city"
+        found = list(census_areas(path, b, level))
+        if found:
+            p2.areas = [a for a in p2.areas if a[0] != level] + found
+    if args.country:
+        p2.areas = [a for a in p2.areas if a[0] != "country"]
+        p2.areas.append(("country", args.country, box(b[1] - 0.5, b[0] - 0.5, b[3] + 0.5, b[2] + 0.5)))
 
     arows = []
     for i, (level, name, geom) in enumerate(p2.areas):
