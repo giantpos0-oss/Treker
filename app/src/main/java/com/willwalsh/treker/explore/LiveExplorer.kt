@@ -69,6 +69,11 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         // GPS accuracy wobbles around any cutoff. Only a change that lasts counts: weak for 20 seconds,
         // or good (with a margin) for 15 seconds. Then it's said at most once every 3 minutes.
         val now = System.currentTimeMillis()
+        // Low-power fixes while you're still are rough by design: they don't change anything.
+        if (app.location.lowPower) {
+            status.value = "Saving battery while you're still. GPS will be precise again as soon as you move."
+            return
+        }
         preciseRun = if (fix.accuracy <= MAX_ACCURACY) preciseRun + 1 else 0
         // At start-up, the first 5 precise fixes in a row are enough; after that, changes must last.
         if (gpsWeak && lastGpsSpoken == 0L && gpsChangeSince == 0L && preciseRun >= 5) { gpsWeak = false; preciseRun = 5 }
@@ -133,25 +138,48 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
             if (on(LiveItem.ADDRESS) && !gpsWeak && !info.address.isNullOrBlank() && info.address != old?.address)
                 parts.add(if (v == Verbosity.BRIEF) info.address else "near ${info.address}")
             if (parts.isNotEmpty()) say(parts.joinToString(", "))
-            if (street.value == null && !gpsWeak && fix.accuracy <= MAX_ACCURACY && !info.street.isNullOrBlank()) street.value = info.street
+
         }
     }
 
     private fun spellZip(z: String) = z.toCharArray().joinToString(" ")
 
     // Street names and intersections, from OpenStreetMap.
+    private var lastStreetCheckAt: LatLon? = null
+    private var lastStreetCheckTime = 0L
+
+    /**
+     * Which street you're on, judged fairly for how good GPS is right now. With a precise fix, the
+     * nearest street. With a rougher fix (up to about 100 feet), only when the nearest street is clearly
+     * closer than any other, by at least half the GPS error. Otherwise Treker says nothing.
+     */
+    private fun confidentStreet(map: com.willwalsh.treker.data.StreetArea, fix: Fix): com.willwalsh.treker.data.StreetArea.Candidate? {
+        val acc = fix.accuracy.toDouble()
+        if (acc > 30) return null
+        val c = map.streetCandidates(fix.pos, fix.course)
+        val best = c.firstOrNull() ?: return null
+        val second = c.getOrNull(1)
+        if (acc <= MAX_ACCURACY) return best.takeIf { it.distance < 20 + acc / 2 }
+        val margin = (second?.score ?: Double.MAX_VALUE) - best.score
+        return best.takeIf { it.distance < 25 + acc / 2 && margin >= acc * 0.5 }
+    }
+
     private fun checkStreets(fix: Fix) {
         if (streetJob?.isActive == true) return
+        // Looking up streets costs battery: only when you've moved a few meters, or every 5 seconds.
+        val now = System.currentTimeMillis()
+        val movedSince = lastStreetCheckAt?.let { Geo.distance(it, fix.pos) } ?: Double.MAX_VALUE
+        if (movedSince < 3 && now - lastStreetCheckTime < 5_000) return
+        lastStreetCheckAt = fix.pos; lastStreetCheckTime = now
         if (!on(LiveItem.STREET) && !on(LiveItem.INTERSECTIONS)) return
         streetJob = scope.launch {
             val map = StreetMap.around(fix.pos) ?: return@launch
             // With a weak GPS signal, Treker stays quiet about streets and intersections rather
             // than risk naming the wrong one.
-            if (gpsWeak || fix.accuracy > MAX_ACCURACY) return@launch
             if (on(LiveItem.STREET)) {
-                val near = map.nearestStreet(fix.pos, fix.course)
-                val name = near?.takeIf { it.second < 20 + fix.accuracy / 2 }?.first?.name
-                if (name != null && name != street.value) {
+                val near = confidentStreet(map, fix)
+                val name = near?.way?.name
+                if (near != null && name != null && name != street.value) {
                     // Only announce a new street once it's confirmed by 3 precise fixes in a row, so crossing
                     // a street, or one stray fix, isn't "on".
                     if (name == pendingStreet) pendingStreetCount++ else { pendingStreet = name; pendingStreetCount = 1 }
@@ -160,12 +188,13 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
                         say(when (settings.streetVerbosity) {
                             Verbosity.BRIEF -> name
                             Verbosity.NORMAL -> "On $name"
-                            Verbosity.DETAILED -> "On $name" + (near.first.kind.let { streetKind(it) }?.let { ", $it" } ?: "")
+                            Verbosity.DETAILED -> "On $name" + (near.way.kind.let { streetKind(it) }?.let { ", $it" } ?: "")
                         })
                     }
                 }
             }
-            if (on(LiveItem.INTERSECTIONS)) {
+            // Intersections ahead need a precise fix: their distance matters.
+            if (on(LiveItem.INTERSECTIONS) && !gpsWeak && fix.accuracy <= MAX_ACCURACY) {
                 val course = fix.course ?: return@launch
                 val now = System.currentTimeMillis()
                 val ahead = map.clusters

@@ -144,6 +144,7 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
 
     fun start(place: Place, travel: TravelMode) {
         stop(silent = true)
+        app.location.setLowPower(false)
         val here = app.location.fix.value
         if (here == null) { say("Your location isn't known yet. Wait for GPS and try again.", true); return }
         destination.value = place; mode.value = travel; active.value = true

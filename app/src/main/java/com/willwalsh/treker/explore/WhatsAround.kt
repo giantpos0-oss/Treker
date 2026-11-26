@@ -26,6 +26,7 @@ class WhatsAround(private val app: TrekerApp, private val scope: CoroutineScope)
     fun start() {
         if (job?.isActive == true) return
         running.value = true
+        app.location.setLowPower(false)
         app.compass.start()
         if (!app.compass.available) app.speaker.say("This phone has no compass sensor, so What's Around can't tell where you're pointing.")
         else app.speaker.say("What's Around on. Point the top of your phone.", interrupt = true)

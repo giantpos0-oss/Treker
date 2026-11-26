@@ -93,28 +93,46 @@ class LocationHub(context: Context) {
             loc.time)
     }
 
+    /** True while saving battery: you've been still a while, so fixes come every 15 seconds at low power. */
+    var lowPower = false
+        private set
+
     @SuppressLint("MissingPermission")
     fun start() {
         if (running) return
         running = true
         filter.reset()
+        request(precise = true)
+        runCatching {
+            for (p in lm.allProviders) lm.getLastKnownLocation(p)?.let { if (_fix.value == null && System.currentTimeMillis() - it.time < 60_000) accept(it) }
+        }
+    }
+
+    /** Switches between precise fixes every second and low-power fixes every 15 seconds. */
+    fun setLowPower(low: Boolean) {
+        if (!running || low == lowPower) return
+        lm.removeUpdates(listener)
+        request(precise = !low)
+    }
+
+    @SuppressLint("MissingPermission")
+    private fun request(precise: Boolean) {
+        lowPower = !precise
         runCatching {
             val all = lm.allProviders
             if (Build.VERSION.SDK_INT >= 31) {
-                val req = android.location.LocationRequest.Builder(1000L)
-                    .setQuality(android.location.LocationRequest.QUALITY_HIGH_ACCURACY)
-                    .setMinUpdateIntervalMillis(500L)
+                val req = android.location.LocationRequest.Builder(if (precise) 1000L else 15_000L)
+                    .setQuality(if (precise) android.location.LocationRequest.QUALITY_HIGH_ACCURACY else android.location.LocationRequest.QUALITY_BALANCED_POWER_ACCURACY)
+                    .setMinUpdateIntervalMillis(if (precise) 500L else 10_000L)
                     .build()
                 val exec = java.util.concurrent.Executor { r -> android.os.Handler(Looper.getMainLooper()).post(r) }
-                for (p in listOf(LocationManager.FUSED_PROVIDER, LocationManager.GPS_PROVIDER)) {
-                    if (p in all) lm.requestLocationUpdates(p, req, exec, listener)
-                }
+                // The GPS chip itself is the big battery user: only while precise.
+                val providers = if (precise) listOf(LocationManager.FUSED_PROVIDER, LocationManager.GPS_PROVIDER) else listOf(LocationManager.FUSED_PROVIDER)
+                for (p in providers) if (p in all) lm.requestLocationUpdates(p, req, exec, listener)
             } else {
-                for (p in listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)) {
-                    if (p in all) lm.requestLocationUpdates(p, 1000L, 0f, listener, Looper.getMainLooper())
-                }
+                val providers = if (precise) listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER) else listOf(LocationManager.NETWORK_PROVIDER)
+                for (p in providers) if (p in all) lm.requestLocationUpdates(p, if (precise) 1000L else 15_000L, 0f, listener, Looper.getMainLooper())
             }
-            for (p in all) lm.getLastKnownLocation(p)?.let { if (_fix.value == null && System.currentTimeMillis() - it.time < 60_000) accept(it) }
         }.onFailure { running = false }
     }
 

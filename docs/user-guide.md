@@ -108,7 +108,8 @@ Treker is built so it doesn't tell you something wrong with confidence.
 - Treker asks your phone for its most precise location mode and also listens to the GPS chip directly. On phones with dual-frequency GPS, such as recent Pixels, that's accurate to a few feet out in the open. Positions are smoothed so one wild fix can't throw you across the street, but the accuracy Treker reports is always the GPS's own.
 - At the end of a walk, Treker doesn't stop at the end of the street. In the last 150 feet it counts down the distance to the destination itself and says which way it is, like Corner Cafe, 40 feet, ahead and slightly to the left. It only says you've arrived when you're within about 30 feet, or the arrival distance you choose, and GPS is precise enough to be sure. If it isn't, Treker says so instead of announcing an arrival it can't stand behind.
 - When Treker starts, it names nothing until GPS has given 5 precise readings in a row, so a rough first position, which can be hundreds of feet off, is never used.
-- A new street is only announced once 3 precise readings in a row agree on it.
+- A new street is only announced once 3 readings in a row agree on it. Indoors, or wherever GPS is a little rough, up to about 100 feet off, a street is still named if it's clearly the nearest one; if two streets are too close to call, Treker says nothing.
+- To save battery, when you've been still for 2 minutes and aren't being guided or using What's Around, Treker checks your position every 15 seconds at low power. The moment the phone senses you moving, precise GPS comes straight back. While this is happening, the GPS line on the Explore tab says Saving battery while you're still.
 - At a corner, Treker names the street you're walking along, not the cross street that happens to be a little closer.
 - A trail or footpath, such as one behind your house, is only named when you're on it; otherwise the street nearby wins.
 - A divided road, with separate lanes each way, is announced as one intersection, not two.
@@ -150,14 +151,17 @@ Shake your phone firmly, twice, to hear Where am I: your street, nearest address
 
 At the top are Open user guide in browser and Open release notes in browser. Below them, each group of settings has its own button. Each group opens on its own page; Navigate up, at the top left of the screen, or your phone's back gesture, takes you back.
 
+Inside a group, every setting with several choices has its own button, which says the setting and its current choice, for example Speech engine: Phone's default engine. Pressing it opens the choices, as radio buttons, on their own screen; Navigate up takes you back to the group. On-off switches and sliders, such as Avoid stairs or Speech rate, are right on the group's page.
+
 Speech: Treker's own voice, which speaks live exploration, What's Around and guidance. It's separate from your screen reader's voice.
 
 - Speech engine: any speech engine installed on your phone, or the phone's default.
-- Voice: the voices in that engine, in your language. Switch on Show voices for all languages to see the rest.
-- Speech rate, pitch and volume.
+- Voice: the voices in that engine, in your language. On the Voice screen, switch on Show voices for all languages to see the rest.
+- Speech rate, from half speed to 8 times normal speed, in steps of a half. How fast it actually goes depends on your speech engine; some engines stop getting faster before 8.
+- Pitch and volume.
 - Test speech plays a sample announcement.
 
-Announcements and verbosity: how much live exploration says, set separately for streets, intersections, places you pass, and the country, state, county, city and zip code. Each has three levels, and each option says what you'll hear, for example: Brief, for example: Main Street. Detailed intersections say what kind of intersection it is, like a T intersection or a 4-way intersection, and where it is, like ahead. Detailed streets say what kind of street it is, like a residential street or a major road. Announce intersections ahead sets how early intersections are announced, from about 50 feet to about 200 feet. Announce while guiding is here too: the same switches as the Explore tab's Announce while moving, used instead of them while route guidance is running, in every travel mode. The switches for while you're exploring are on the Explore tab.
+Announcements and verbosity: how much live exploration says, set separately for streets, intersections, places you pass, and the country, state, county, city and zip code. Each has three levels, and each option says what you'll hear, for example: Brief, for example: Main Street. Detailed intersections say what kind of intersection it is, like a T intersection or a 4-way intersection, and where it is, like ahead. Detailed streets say what kind of street it is, like a residential street or a major road. Announce intersections ahead sets how early intersections are announced, from about 50 feet to about 200 feet. Announce while guiding is here too, as its own button saying how many are on: the same switches as the Explore tab's Announce while moving, used instead of them while route guidance is running, in every travel mode. The switches for while you're exploring are on the Explore tab.
 
 Routes:
 

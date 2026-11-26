@@ -48,12 +48,32 @@ class ExploreService : LifecycleService() {
         app.location.start()
         lifecycleScope.launch { app.location.fix.collect { f -> if (f != null) app.explorer.onFix(f) } }
         // Shake the phone to hear where you are, even with the screen off or in another app.
-        shake = ShakeDetector(this, { app.settings.shakeStrength.g }) {
-            if (app.settings.shakeWhereAmI) {
-                if (app.settings.vibrate) app.speaker.tick(60)
-                app.speaker.say(app.explorer.whereAmI(), interrupt = true)
+        shake = ShakeDetector(this, { app.settings.shakeStrength.g },
+            onShake = {
+                if (app.settings.shakeWhereAmI) {
+                    if (app.settings.vibrate) app.speaker.tick(60)
+                    app.speaker.say(app.explorer.whereAmI(), interrupt = true)
+                }
+            },
+            onMotion = { lastMotion = System.currentTimeMillis(); app.location.setLowPower(false) },
+        ).also { it.start() }
+        // Save battery while you're still: after 2 minutes without moving (and not being guided or using
+        // What's Around), GPS drops to a low-power check every 15 seconds until the phone moves again.
+        lifecycleScope.launch {
+            var anchor: com.willwalsh.treker.data.LatLon? = null
+            var stillSince = System.currentTimeMillis()
+            while (true) {
+                kotlinx.coroutines.delay(10_000)
+                val f = app.location.fix.value ?: continue
+                val now = System.currentTimeMillis()
+                val a = anchor
+                if (a == null || com.willwalsh.treker.data.Geo.distance(a, f.pos) > 15 || f.speed > 0.7f || now - lastMotion < 15_000) {
+                    anchor = f.pos; stillSince = now
+                }
+                val busy = app.guidance.active.value || app.whatsAround.running.value
+                app.location.setLowPower(!busy && now - stillSince > 120_000)
             }
-        }.also { it.start() }
+        }
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -74,6 +94,7 @@ class ExploreService : LifecycleService() {
     }
 
     private var shake: ShakeDetector? = null
+    @Volatile private var lastMotion = System.currentTimeMillis()
 
     override fun onDestroy() {
         shake?.stop()

@@ -30,15 +30,22 @@ enum class SettingsPage(val title: String) {
 object AppNav {
     /** The page showing on the Help and settings tab. */
     val settingsPage = mutableStateOf(SettingsPage.MAIN)
+    /** The single option open inside a settings page, by title, or null. */
+    val settingsOption = mutableStateOf<String?>(null)
 
     /** True when the current screen is a sub-screen with somewhere to go up to. */
-    val canGoUp: Boolean get() = tab.value == Tab.HELP && settingsPage.value != SettingsPage.MAIN
+    val canGoUp: Boolean get() = tab.value == Tab.HELP && (settingsPage.value != SettingsPage.MAIN || settingsOption.value != null)
 
     /** Navigate up from a sub-screen. */
-    fun up() { if (tab.value == Tab.HELP) settingsPage.value = SettingsPage.MAIN }
+    fun up() {
+        if (tab.value != Tab.HELP) return
+        if (settingsOption.value != null) settingsOption.value = null else settingsPage.value = SettingsPage.MAIN
+    }
+
+    fun openPage(p: SettingsPage) { settingsOption.value = null; settingsPage.value = p }
 
     /** The title for the top bar. */
-    val title: String get() = if (tab.value == Tab.HELP) settingsPage.value.title else tab.value.label
+    val title: String get() = if (tab.value == Tab.HELP) settingsOption.value ?: settingsPage.value.title else tab.value.label
 
     val tab = mutableStateOf(Tab.EXPLORE)
     val browseFrom = mutableStateOf<Place?>(null)

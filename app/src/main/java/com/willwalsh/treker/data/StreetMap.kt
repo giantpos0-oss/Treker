@@ -84,14 +84,22 @@ class StreetArea(val center: LatLon, val radius: Double, val ways: List<Way>, va
      * moving, a street running the same way you're going wins over a cross street that happens to
      * be a little closer, so standing at a corner doesn't make Treker name the wrong street.
      */
-    fun nearestStreet(p: LatLon, course: Double? = null): Pair<Way, Double>? {
-        var best: Way? = null; var bestScore = Double.MAX_VALUE; var bestD = 0.0
+    fun nearestStreet(p: LatLon, course: Double? = null): Pair<Way, Double>? =
+        streetCandidates(p, course).firstOrNull()?.let { it.way to it.distance }
+
+    /** A street near you: [score] is the distance with the walking-direction and path adjustments. */
+    data class Candidate(val way: Way, val score: Double, val distance: Double)
+
+    /** The best match for each differently named street near [p], best first. */
+    fun streetCandidates(p: LatLon, course: Double? = null, within: Double = 80.0): List<Candidate> {
+        val best = HashMap<String, Candidate>()
         for (w in ways) {
             if (w.name.isBlank()) continue
             for (i in 0 until w.nodes.size - 1) {
                 val a = nodes[w.nodes[i]] ?: continue
                 val b = nodes[w.nodes[i + 1]] ?: continue
                 val d = distanceToSegment(p, a, b)
+                if (d > within) continue
                 var score = d
                 // A footpath or trail only wins when you're right on it; otherwise a real street nearby
                 // is almost always where you are (sidewalks and back-yard trails run beside streets).
@@ -101,11 +109,13 @@ class StreetArea(val center: LatLon, val radius: Double, val ways: List<Way>, va
                     val along = minOf(diff, 180 - diff) // either direction along the street
                     if (along > 35) score += 15.0
                 }
-                if (score < bestScore) { bestScore = score; bestD = d; best = w }
+                val prev = best[w.name]
+                if (prev == null || score < prev.score) best[w.name] = Candidate(w, score, d)
             }
         }
-        return best?.let { it to bestD }
+        return best.values.sortedBy { it.score }
     }
+
 
     /** The nearest node on any street to [p]: where map browsing starts. */
     fun nearestNode(p: LatLon, namedOnly: Boolean = true): Long? =

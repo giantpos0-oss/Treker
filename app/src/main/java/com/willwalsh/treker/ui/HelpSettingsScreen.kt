@@ -53,7 +53,7 @@ private const val REPO = "https://github.com/giantpos0-oss/Treker/blob/main/docs
 fun HelpSettingsScreen() {
     val context = LocalContext.current
     val page = AppNav.settingsPage.value
-    BackHandler(enabled = page != Page.MAIN) { AppNav.up() }
+    BackHandler(enabled = AppNav.canGoUp) { AppNav.up() }
 
     fun open(url: String) = runCatching {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
@@ -67,10 +67,10 @@ fun HelpSettingsScreen() {
                 Text("Treker version ${BuildConfig.VERSION_NAME}", fontSize = 16.sp, modifier = Modifier.padding(vertical = 4.dp))
                 Heading("Settings")
                 for (p in listOf(Page.SPEECH, Page.ANNOUNCEMENTS, Page.ROUTES, Page.UNITS, Page.ACCURACY, Page.GESTURES, Page.MAPS, Page.REPORTS)) {
-                    BigButton(p.title) { AppNav.settingsPage.value = p }
+                    BigButton(p.title) { AppNav.openPage(p) }
                 }
                 Heading("Help")
-                BigButton(Page.GUIDE.title) { AppNav.settingsPage.value = Page.GUIDE }
+                BigButton(Page.GUIDE.title) { AppNav.openPage(Page.GUIDE) }
                 Heading("Map data")
                 Text("Map data © OpenStreetMap contributors, available under the Open Database License. " +
                     "Routes by Valhalla. Public transit trips by Transitous, transitous.org, from open timetable data. " +
@@ -93,19 +93,38 @@ fun HelpSettingsScreen() {
     }
 }
 
-/** A titled list of choices where exactly one is selected; screen readers hear it as radio buttons. */
+/** True when no single option is open, so the rest of a settings page should show. */
+private val pageShowing: Boolean get() = AppNav.settingsOption.value == null
+
+/**
+ * One option in a settings page: a button saying its name and current value. Pressing it opens the
+ * option on its own screen; Navigate up comes back.
+ */
 @Composable
-fun <T> Choices(title: String, options: List<Pair<T, String>>, selected: T, onSelect: (T) -> Unit) {
-    Text(title, fontSize = 19.sp, modifier = Modifier.padding(top = 14.dp, bottom = 4.dp))
-    Column(Modifier.selectableGroup()) {
-        for ((value, label) in options) {
-            Row(
-                Modifier.fillMaxWidth().heightIn(min = 48.dp)
-                    .selectable(selected = value == selected, role = Role.RadioButton, onClick = { onSelect(value) }),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                RadioButton(selected = value == selected, onClick = null)
-                Text(label, fontSize = 17.sp, modifier = Modifier.padding(start = 8.dp))
+fun OptionPage(title: String, current: String, content: @Composable () -> Unit) {
+    when (AppNav.settingsOption.value) {
+        null -> BigButton(if (current.isBlank()) title else "$title: $current") { AppNav.settingsOption.value = title }
+        title -> content()
+        else -> {}
+    }
+}
+
+/** An option with exactly one choice selected; on its screen they're radio buttons. */
+@Composable
+fun <T> Choices(title: String, options: List<Pair<T, String>>, selected: T, extra: @Composable () -> Unit = {}, onSelect: (T) -> Unit) {
+    val current = options.firstOrNull { it.first == selected }?.second.orEmpty()
+    OptionPage(title, current) {
+        extra()
+        Column(Modifier.selectableGroup()) {
+            for ((value, label) in options) {
+                Row(
+                    Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                        .selectable(selected = value == selected, role = Role.RadioButton, onClick = { onSelect(value) }),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(selected = value == selected, onClick = null)
+                    Text(label, fontSize = 17.sp, modifier = Modifier.padding(start = 8.dp))
+                }
             }
         }
     }
@@ -129,9 +148,11 @@ private fun SpeechSettings() {
     val sp = app.speaker
     var allLanguages by remember { mutableStateOf(false) }
 
-    Text("Treker's own voice speaks live exploration, What's Around and guidance, so it works with the screen off. " +
-        "It's separate from your screen reader's voice.", fontSize = 16.sp)
-    BigButton("Test speech") { sp.say("This is Treker. Approaching Main Street and Oak Avenue, 100 feet.", true) }
+    if (pageShowing) {
+        Text("Treker's own voice speaks live exploration, What's Around and guidance, so it works with the screen off. " +
+            "It's separate from your screen reader's voice.", fontSize = 16.sp)
+        BigButton("Test speech") { sp.say("This is Treker. Approaching Main Street and Oak Avenue, 100 feet.", true) }
+    }
 
     Choices("Speech engine", listOf("" to "Phone's default engine") + sp.engines.toList(), s.speechEngine) {
         s.speechEngine = it; s.speechVoice = ""
@@ -141,20 +162,23 @@ private fun SpeechSettings() {
 
     val lang = Locale.getDefault().language
     val voices = sp.voices.toList().filter { allLanguages || it.first.startsWith(lang) || it.second.startsWith(Locale.getDefault().displayLanguage) }
-    SwitchRow("Show voices for all languages", allLanguages) { allLanguages = it }
-    if (sp.voices.isEmpty()) Text("This engine doesn't list its voices. Its default voice is used.", fontSize = 16.sp)
-    else Choices("Voice", listOf("" to "Engine's default voice") + voices, s.speechVoice) {
+    if (sp.voices.isEmpty()) { if (pageShowing) Text("This engine doesn't list its voices. Its default voice is used.", fontSize = 16.sp) }
+    else Choices("Voice", listOf("" to "Engine's default voice") + voices, s.speechVoice,
+        extra = { SwitchRow("Show voices for all languages", allLanguages) { allLanguages = it } }) {
         sp.setVoice(it)
         if (it.isBlank()) sp.reload()
         sp.say("This is the voice you chose.", true)
     }
 
-    LabeledSlider("Speech rate", s.speechRate, 0.5f..3f, 24, { "%.1f".format(it) },
-        { s.speechRate = Math.round(it * 10) / 10f; sp.rate = s.speechRate }, { sp.say("Speech rate ${"%.1f".format(s.speechRate)}", true) })
-    LabeledSlider("Pitch", s.speechPitch, 0.5f..2f, 14, { "%.1f".format(it) },
-        { s.speechPitch = Math.round(it * 10) / 10f; sp.pitch = s.speechPitch }, { sp.say("Pitch ${"%.1f".format(s.speechPitch)}", true) })
-    LabeledSlider("Volume", s.speechVolume, 0.2f..1f, 7, { "${(it * 100).toInt()} percent" },
-        { s.speechVolume = Math.round(it * 10) / 10f }, { sp.say("Volume ${(s.speechVolume * 100).toInt()} percent", true) })
+    if (pageShowing) {
+        // Big steps: half a step at a time, up to 8 times normal speed.
+        LabeledSlider("Speech rate", s.speechRate, 0.5f..8f, 14, { "%.1f".format(it) },
+            { s.speechRate = Math.round(it * 2) / 2f; sp.rate = s.speechRate }, { sp.say("Speech rate ${"%.1f".format(s.speechRate)}", true) })
+        LabeledSlider("Pitch", s.speechPitch, 0.5f..2f, 14, { "%.1f".format(it) },
+            { s.speechPitch = Math.round(it * 10) / 10f; sp.pitch = s.speechPitch }, { sp.say("Pitch ${"%.1f".format(s.speechPitch)}", true) })
+        LabeledSlider("Volume", s.speechVolume, 0.2f..1f, 7, { "${(it * 100).toInt()} percent" },
+            { s.speechVolume = Math.round(it * 10) / 10f }, { sp.say("Volume ${(s.speechVolume * 100).toInt()} percent", true) })
+    }
 }
 
 @Composable
@@ -165,7 +189,7 @@ private fun AnnouncementSettings() {
         Verbosity.BRIEF to "Brief, for example: $brief", Verbosity.NORMAL to "Normal, for example: $normal",
         Verbosity.DETAILED to "Detailed, for example: $detailed")
 
-    Text("Choose what live exploration announces, and how much it says for each.", fontSize = 16.sp)
+    if (pageShowing) Text("Choose what live exploration announces, and how much it says for each.", fontSize = 16.sp)
     Choices("Streets", opts("Main Street", "On Main Street", "On Main Street, residential street"), s.streetVerbosity) { s.streetVerbosity = it }
     Choices("Intersections", opts("Main Street and Oak Avenue", "Approaching Main Street and Oak Avenue, 100 feet",
         "Approaching 4-way intersection, Main Street and Oak Avenue, 100 feet, ahead"), s.intersectionVerbosity) { s.intersectionVerbosity = it }
@@ -174,10 +198,12 @@ private fun AnnouncementSettings() {
     Choices("Country, state, county, city and zip code", opts("Austin", "Austin, zip code 7 8 7 0 1", "Entering Austin, zip code 7 8 7 0 1"),
         s.areaVerbosity) { s.areaVerbosity = it }
 
-    SwitchRow("Announce when the GPS signal turns weak or good again", s.announceGps) { s.announceGps = it }
-    Text("Announce while guiding", fontSize = 19.sp, modifier = Modifier.padding(top = 14.dp, bottom = 4.dp))
-    Text("Used instead of the Explore tab's switches while route guidance is running, in every travel mode.", fontSize = 16.sp)
-    for (item in LiveItem.entries) SwitchRow(item.label, s.isOn(item, guiding = true)) { s.set(item, it, guiding = true) }
+    if (pageShowing) SwitchRow("Announce when the GPS signal turns weak or good again", s.announceGps) { s.announceGps = it }
+    val guiding = LiveItem.entries.filter { s.isOn(it, guiding = true) }
+    OptionPage("Announce while guiding", "${guiding.size} of ${LiveItem.entries.size} on") {
+        Text("Used instead of the Explore tab's switches while route guidance is running, in every travel mode.", fontSize = 16.sp)
+        for (item in LiveItem.entries) SwitchRow(item.label, s.isOn(item, guiding = true)) { s.set(item, it, guiding = true) }
+    }
 }
 
 @Composable
@@ -186,6 +212,7 @@ private fun RouteSettings() {
     val s = app.settings
     Choices("Route type", listOf(RouteType.FASTEST to "Fastest", RouteType.SHORTEST to "Shortest distance"), s.routeType) { s.routeType = it }
 
+    if (!pageShowing) return
     Text("Walking", fontSize = 19.sp, modifier = Modifier.padding(top = 14.dp, bottom = 4.dp))
     SwitchRow("Avoid stairs", s.avoidStairs) { s.avoidStairs = it }
     SwitchRow("Prefer sidewalks and footpaths", s.preferSidewalks) { s.preferSidewalks = it }
@@ -215,15 +242,16 @@ private fun AccuracySettings() {
     val app = LocalContext.current.applicationContext as TrekerApp
     val s = app.settings
     val fix = app.location.fix.value
-    Text(if (fix == null) "No GPS position yet." else "Right now, GPS is accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), s.units)}.",
+    if (pageShowing) Text(if (fix == null) "No GPS position yet." else "Right now, GPS is accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), s.units)}.",
         fontSize = 17.sp)
     Choices("Required GPS accuracy", GpsAccuracy.entries.map { it to it.label }, s.gpsAccuracy) { s.gpsAccuracy = it }
-    Text("Treker only names streets, intersections, addresses and places, and only says you've arrived, when your GPS position is " +
-        "at least this precise. When it isn't, Treker says GPS signal weak and waits rather than guess. Out in the open, most phones " +
+    if (pageShowing) Text("Treker only announces intersections, addresses and places you pass, and only says you've arrived, when your GPS position is " +
+        "at least this precise. Street names can be given with GPS up to about 100 feet off, but only when one street is clearly the nearest. " +
+        "When GPS isn't good enough, Treker says nothing rather than guess. Out in the open, most phones " +
         "manage about 15 feet; between tall buildings, under trees or indoors, GPS can't reach 30 feet, and Treker will tell you so.",
         fontSize = 16.sp)
     Choices("Say you've arrived when walking within", ArrivalDistance.entries.map { it to it.label }, s.arrivalDistance) { s.arrivalDistance = it }
-    Text("In the last 150 feet of a walk, Treker counts down the distance and says which way the destination is, " +
+    if (pageShowing) Text("In the last 150 feet of a walk, Treker counts down the distance and says which way the destination is, " +
         "right up to the door, not just the end of the street.", fontSize = 16.sp)
 }
 
@@ -231,11 +259,11 @@ private fun AccuracySettings() {
 private fun GestureSettings() {
     val app = LocalContext.current.applicationContext as TrekerApp
     val s = app.settings
-    SwitchRow("Shake the phone for Where am I", s.shakeWhereAmI) { s.shakeWhereAmI = it }
+    if (pageShowing) SwitchRow("Shake the phone for Where am I", s.shakeWhereAmI) { s.shakeWhereAmI = it }
     Choices("How hard to shake", ShakeStrength.entries.map { it to it.label }, s.shakeStrength) { s.shakeStrength = it }
-    Text("Works with the screen off and in other apps, while live exploration is running. " +
+    if (pageShowing) Text("Works with the screen off and in other apps, while live exploration is running. " +
         "If walking sets it off, choose Firm; if it's hard to trigger, choose Light.", fontSize = 16.sp)
-    SwitchRow("Vibrate for shakes and in What's Around", s.vibrate) { s.vibrate = it }
+    if (pageShowing) SwitchRow("Vibrate for shakes and in What's Around", s.vibrate) { s.vibrate = it }
     Choices("What's Around distance", listOf(50, 100, 150, 300, 500).map { it to "Up to ${Geo.distanceWords(it.toDouble(), s.units)}" },
         s.placesRadius) { s.placesRadius = it }
 }

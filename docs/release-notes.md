@@ -1,5 +1,13 @@
 # Treker release notes
 
+## Version 0.1.6
+
+- Fixed: street names stopped being announced indoors and in other places where GPS is a little rough. Now Treker names your street whenever it's clearly the nearest one, even with GPS up to about 100 feet off, and still says nothing when two streets are too close to call.
+- Better battery life: when you've been still for 2 minutes, and aren't being guided or using What's Around, Treker checks your position every 15 seconds at low power instead of using precise GPS every second. As soon as the phone senses you moving, precise GPS comes straight back. The Explore tab says Saving battery while you're still while this is happening.
+- Treker also looks up streets less often when you're not moving.
+- Speech rate now goes up to 8 times normal speed, in steps of a half.
+- Settings: every setting with several choices now has its own button, saying its current choice, for example Speech engine: Phone's default engine. Pressing it opens the choices on their own screen; Navigate up comes back. Switches and sliders stay on the page. Announce while guiding is also its own button now.
+
 ## Version 0.1.5
 
 - Fixed: Treker could name the wrong street, such as a trail behind your house, right after starting or indoors. It was trusting rough first positions. Now nothing is named until GPS has given 5 precise readings in a row, every street name needs a precise reading, and a new street is only announced after 3 precise readings agree.
