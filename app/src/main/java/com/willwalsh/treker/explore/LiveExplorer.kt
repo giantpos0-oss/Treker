@@ -51,6 +51,9 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
     private var noMapWarned = false
 
     private var gpsWeak = false
+    /** When GPS started looking different from what was last announced, or 0. */
+    private var gpsChangeSince = 0L
+    private var lastGpsSpoken = 0L
 
     private var lastCourse: Double? = null
     private var lastCourseTime = 0L
@@ -60,9 +63,21 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         val weak = fix.accuracy > MAX_ACCURACY
         status.value = if (weak) "GPS is weak, accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.units)}"
         else "GPS good, accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.units)}"
-        if (settings.liveExploration && weak != gpsWeak) {
-            gpsWeak = weak
-            say(if (weak) "GPS signal weak. Street and place announcements paused." else "GPS signal good again.")
+        // GPS accuracy wobbles around any cutoff. Only a change that lasts counts: weak for 20 seconds,
+        // or good (with a margin) for 15 seconds. Then it's said at most once every 3 minutes.
+        val now = System.currentTimeMillis()
+        val looksChanged = if (gpsWeak) fix.accuracy <= MAX_ACCURACY * 0.8f else weak
+        if (!looksChanged) gpsChangeSince = 0L
+        else {
+            if (gpsChangeSince == 0L) gpsChangeSince = now
+            if (now - gpsChangeSince > (if (gpsWeak) 15_000 else 20_000)) {
+                gpsWeak = !gpsWeak
+                gpsChangeSince = 0L
+                if (settings.liveExploration && settings.announceGps && now - lastGpsSpoken > 180_000) {
+                    lastGpsSpoken = now
+                    say(if (gpsWeak) "GPS signal weak. Street and place announcements paused." else "GPS signal good again.")
+                }
+            }
         }
         if (!settings.liveExploration) return
         if (!Offline.hasMapFor(fix.pos)) {
@@ -109,7 +124,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
             changed(LiveItem.NEIGHBORHOOD, info.neighborhood, old?.neighborhood, "Neighborhood: ${info.neighborhood}")
             if (settings.isOn(LiveItem.ZIP) && !info.zip.isNullOrBlank() && info.zip != old?.zip)
                 parts.add(if (v == Verbosity.BRIEF) spellZip(info.zip) else "zip code ${spellZip(info.zip)}")
-            if (settings.isOn(LiveItem.ADDRESS) && fix.accuracy <= MAX_ACCURACY && !info.address.isNullOrBlank() && info.address != old?.address)
+            if (settings.isOn(LiveItem.ADDRESS) && !gpsWeak && !info.address.isNullOrBlank() && info.address != old?.address)
                 parts.add(if (v == Verbosity.BRIEF) info.address else "near ${info.address}")
             if (parts.isNotEmpty()) say(parts.joinToString(", "))
             if (street.value == null && !info.street.isNullOrBlank()) street.value = info.street
@@ -126,7 +141,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
             val map = StreetMap.around(fix.pos) ?: return@launch
             // With a weak GPS signal, Treker stays quiet about streets and intersections rather
             // than risk naming the wrong one.
-            if (fix.accuracy > MAX_ACCURACY) return@launch
+            if (gpsWeak) return@launch
             if (settings.isOn(LiveItem.STREET)) {
                 val near = map.nearestStreet(fix.pos, fix.course)
                 val name = near?.takeIf { it.second < 20 + fix.accuracy / 2 }?.first?.name
@@ -188,7 +203,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
 
     // Places you pass: businesses and landmarks close by, from the offline map.
     private fun checkPlaces(fix: Fix) {
-        if (!settings.isOn(LiveItem.PLACES) || placesJob?.isActive == true || fix.accuracy > MAX_ACCURACY) return
+        if (!settings.isOn(LiveItem.PLACES) || placesJob?.isActive == true || gpsWeak) return
         val last = lastPlacesAt
         if (last != null && Geo.distance(last, fix.pos) < 10) return
         lastPlacesAt = fix.pos

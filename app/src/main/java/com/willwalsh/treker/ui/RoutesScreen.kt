@@ -75,6 +75,7 @@ fun RoutesScreen() {
             if (g.current.value.isNotBlank()) Text(g.current.value, fontSize = 20.sp, modifier = Modifier.padding(vertical = 6.dp))
             if (g.active.value) {
                 BigButton("Repeat instruction") { g.repeat() }
+                BigButton(if (g.muted.value) "Unmute guidance" else "Mute guidance") { g.toggleMute() }
                 BigButton("Stop guidance") { g.stop() }
                 BigButton("Report a route problem") {
                     app.location.fix.value?.pos?.let {

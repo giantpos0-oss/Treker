@@ -53,6 +53,13 @@ class Speaker(context: Context, private val settings: com.willwalsh.treker.Setti
         )
         tts.setSpeechRate(rate)
         tts.setPitch(pitch)
+        tts.setOnUtteranceProgressListener(object : android.speech.tts.UtteranceProgressListener() {
+            override fun onStart(utteranceId: String?) {}
+            override fun onDone(utteranceId: String?) { if (inFlight.decrementAndGet() < 0) inFlight.set(0) }
+            @Deprecated("Deprecated in Android")
+            override fun onError(utteranceId: String?) { if (inFlight.decrementAndGet() < 0) inFlight.set(0) }
+            override fun onStop(utteranceId: String?, interrupted: Boolean) { if (inFlight.decrementAndGet() < 0) inFlight.set(0) }
+        })
         engines.clear()
         engines.addAll(tts.engines.map { it.name to it.label })
         val all = runCatching { tts.voices?.toList() }.getOrNull().orEmpty()
@@ -83,15 +90,27 @@ class Speaker(context: Context, private val settings: com.willwalsh.treker.Setti
     }
 
     /** Speaks [text]. [interrupt] cuts off whatever is being said; otherwise it waits its turn. */
+    private var lastText = ""
+    private var lastTextTime = 0L
+    /** Utterances queued but not finished. */
+    private val inFlight = java.util.concurrent.atomic.AtomicInteger(0)
+
     fun say(text: String, interrupt: Boolean = false) {
         if (text.isBlank()) return
-        if (!ready) { pending.add(text to interrupt); return }
-        val mode = if (interrupt) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
+        val now = System.currentTimeMillis()
+        // The same words twice within 10 seconds are never worth hearing.
+        if (!interrupt && text == lastText && now - lastTextTime < 10_000) return
+        lastText = text; lastTextTime = now
+        if (!ready) { if (pending.size < 3) pending.add(text to interrupt); return }
+        // Never let announcements pile up: if two are already waiting, the newest replaces them.
+        val mode = if (interrupt || inFlight.get() >= 2) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
+        if (mode == TextToSpeech.QUEUE_FLUSH) inFlight.set(0)
+        inFlight.incrementAndGet()
         val params = Bundle().apply { putFloat(TextToSpeech.Engine.KEY_PARAM_VOLUME, settings.speechVolume) }
         tts.speak(text, mode, params, "t-${System.nanoTime()}")
     }
 
-    fun stop() { if (ready) tts.stop() }
+    fun stop() { if (ready) tts.stop(); inFlight.set(0) }
 
     val speaking: Boolean get() = ready && tts.isSpeaking
 

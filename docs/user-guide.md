@@ -12,13 +12,13 @@ The first time you open Treker, it asks for permission to use your location and 
 
 Next, download the map for your area. Go to the Help and settings tab, find Offline maps, and choose the map that says it covers where you are. Maps are large, so use Wi-Fi. You can keep using your phone while it downloads, and Treker says when the map is ready. If there's no map for where you are, the Explore tab says so and has a Get the offline map button.
 
-Live exploration starts straight away and keeps running when the screen is off or you're in another app. While it runs, Android shows a Treker notification. The notification has a Stop Treker button that stops GPS and live exploration until you open Treker again.
+Live exploration starts straight away and keeps running when the screen is off or you're in another app. While it runs, Android shows a Treker notification with three buttons: Pause or resume announcements, Mute or unmute guidance, and Stop Treker, which stops GPS, guidance and live exploration until you open Treker again. These work from the notification shade without opening Treker.
 
 # Explore tab
 
 What's Around is the first thing on the Explore tab. Switch it on, then point the top of your phone in any direction, holding it flat or upright. Treker says the place or intersection in that direction and how far away it is. Turn slowly to hear everything around you. Switch it off when you're done, because it uses the compass all the time it's on.
 
-Live exploration announces information as you move. Switch it off to pause the announcements. GPS keeps running so the other features still work.
+Live exploration announces information as you move. Switch it off to pause the announcements; Treker stops talking straight away. GPS keeps running so the other features still work.
 
 Below that is a line saying how good the GPS signal is.
 
@@ -69,7 +69,9 @@ Start from my location moves you back to where you really are.
 
 Type an address or a place name in the single Address or place name field, then press Search, or the search key on the keyboard. A whole address goes in the one field, for example 123 Main Street, Springfield, Illinois. You can also type a business name or a kind of place, like coffee. Results are listed with their distance from you. Each result has the place actions below.
 
-While guidance is running, the top of the Routes tab shows the current instruction and has Repeat instruction and Stop guidance buttons, followed by the list of steps.
+While guidance is running, the top of the Routes tab shows the current instruction and has Repeat instruction, Mute guidance, Stop guidance and Report a route problem buttons, followed by the list of steps.
+
+Mute guidance silences guidance announcements for walking, driving and public transit alike. Guidance keeps running and the screen keeps updating, and Repeat instruction still speaks when you press it. The button then says Unmute guidance.
 
 # Place actions
 
@@ -95,7 +97,7 @@ Save my current location saves where you are, named by its street address. Place
 
 Treker is built so it doesn't tell you something wrong with confidence.
 
-- Treker only names streets, intersections, addresses and places when your GPS position is precise to about 30 feet, or the accuracy you choose in Help and settings, under GPS accuracy. When it isn't, Treker says GPS signal weak and waits until the signal is good again, then says GPS signal good again. The Explore tab always shows how accurate your position is.
+- Treker only names streets, intersections, addresses and places when your GPS position is precise to about 30 feet, or the accuracy you choose in Help and settings, under GPS accuracy. When it isn't, Treker waits. If the signal stays weak for 20 seconds, Treker says GPS signal weak; once it's been good again for 15 seconds, GPS signal good again. It says these at most once every 3 minutes, and you can switch them off with Announce when the GPS signal turns weak or good again, in Announcements and verbosity. The Explore tab always shows how accurate your position is.
 - Treker asks your phone for its most precise location mode and also listens to the GPS chip directly. On phones with dual-frequency GPS, such as recent Pixels, that's accurate to a few feet out in the open. Positions are smoothed so one wild fix can't throw you across the street, but the accuracy Treker reports is always the GPS's own.
 - At the end of a walk, Treker doesn't stop at the end of the street. In the last 150 feet it counts down the distance to the destination itself and says which way it is, like Corner Cafe, 40 feet, ahead and slightly to the left. It only says you've arrived when you're within about 30 feet, or the arrival distance you choose, and GPS is precise enough to be sure. If it isn't, Treker says so instead of announcing an arrival it can't stand behind.
 - At a corner, Treker names the street you're walking along, not the cross street that happens to be a little closer.

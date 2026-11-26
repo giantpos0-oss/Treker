@@ -31,11 +31,15 @@ class ExploreService : LifecycleService() {
         nm.createNotificationChannel(NotificationChannel(CHANNEL, "Live exploration", NotificationManager.IMPORTANCE_LOW))
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java), PendingIntent.FLAG_IMMUTABLE)
         val stop = PendingIntent.getService(this, 1, Intent(this, ExploreService::class.java).setAction(ACTION_STOP), PendingIntent.FLAG_IMMUTABLE)
+        val pause = PendingIntent.getService(this, 2, Intent(this, ExploreService::class.java).setAction(ACTION_PAUSE), PendingIntent.FLAG_IMMUTABLE)
+        val muteGuidance = PendingIntent.getService(this, 3, Intent(this, ExploreService::class.java).setAction(ACTION_MUTE_GUIDANCE), PendingIntent.FLAG_IMMUTABLE)
         val n: Notification = NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setContentTitle("Treker is exploring")
             .setContentText("Live exploration is announcing where you are.")
             .setContentIntent(open)
+            .addAction(0, "Pause or resume announcements", pause)
+            .addAction(0, "Mute or unmute guidance", muteGuidance)
             .addAction(0, "Stop Treker", stop)
             .setOngoing(true)
             .build()
@@ -56,9 +60,23 @@ class ExploreService : LifecycleService() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
+        val app = application as TrekerApp
+        when (intent?.action) {
+            ACTION_PAUSE -> {
+                app.settings.liveExploration = !app.settings.liveExploration
+                app.speaker.stop()
+                app.speaker.say(if (app.settings.liveExploration) "Announcements resumed." else "Announcements paused.", true)
+                return START_STICKY
+            }
+            ACTION_MUTE_GUIDANCE -> {
+                if (app.guidance.active.value) app.guidance.toggleMute() else app.speaker.say("No guidance running.", true)
+                return START_STICKY
+            }
+        }
         if (intent?.action == ACTION_STOP) {
-            val app = application as TrekerApp
             app.whatsAround.stop()
+            app.guidance.stop(silent = true)
+            app.speaker.stop()
             app.location.stop()
             stopSelf()
             return START_NOT_STICKY
@@ -77,6 +95,8 @@ class ExploreService : LifecycleService() {
     companion object {
         private const val CHANNEL = "explore"
         private const val ACTION_STOP = "stop"
+        private const val ACTION_PAUSE = "pause"
+        private const val ACTION_MUTE_GUIDANCE = "mute_guidance"
 
         fun start(context: Context) {
             runCatching { ContextCompat.startForegroundService(context, Intent(context, ExploreService::class.java)) }

@@ -189,6 +189,7 @@ private fun AnnouncementSettings() {
     Choices("Country, state, county, city and zip code", opts("Austin", "Austin, zip code 7 8 7 0 1", "Entering Austin, zip code 7 8 7 0 1"),
         s.areaVerbosity) { s.areaVerbosity = it }
 
+    SwitchRow("Announce when the GPS signal turns weak or good again", s.announceGps) { s.announceGps = it }
     Text("Announce while moving", fontSize = 19.sp, modifier = Modifier.padding(top = 14.dp, bottom = 4.dp))
     for (item in LiveItem.entries) SwitchRow(item.label, s.isOn(item)) { s.set(item, it) }
 }

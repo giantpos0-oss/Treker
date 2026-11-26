@@ -1,5 +1,12 @@
 # Treker release notes
 
+## Version 0.1.1
+
+- Fixed: Treker kept saying GPS signal weak and GPS signal good again over and over, and could talk so much that the screen reader couldn't be heard. Now the GPS signal is only announced when a change lasts, weak for 20 seconds or good again for 15, and at most once every 3 minutes. You can switch these announcements off in Help and settings, under Announcements and verbosity.
+- Fixed: announcements could pile up. Treker no longer repeats the same words within 10 seconds, and never lets more than two announcements wait; newer ones replace older ones.
+- New: Mute guidance and Unmute guidance, on the Routes tab while guidance is running, for walking, driving and public transit. Guidance keeps going and the screen keeps updating; Repeat instruction still speaks when you press it.
+- New: the Treker notification has Pause or resume announcements and Mute or unmute guidance, as well as Stop Treker.
+
 ## Version 0.1.0
 
 The first build of Treker. Everything runs on OpenStreetMap and works offline, except public transit trips.

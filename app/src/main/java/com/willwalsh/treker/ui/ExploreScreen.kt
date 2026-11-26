@@ -46,6 +46,7 @@ fun ExploreScreen() {
 
         SwitchRow("Live exploration", s.liveExploration) { on ->
             s.liveExploration = on
+            if (!on) app.speaker.stop()
             app.speaker.say(if (on) "Live exploration on." else "Live exploration paused.", true)
         }
         Text(app.explorer.status.value, fontSize = 16.sp, modifier = Modifier.padding(vertical = 4.dp))

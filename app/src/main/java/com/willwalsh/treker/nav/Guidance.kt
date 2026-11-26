@@ -132,7 +132,16 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
     private var simJob: Job? = null
     private val units get() = app.settings.units
 
-    private fun say(text: String, interrupt: Boolean = false) = app.speaker.say(text, interrupt)
+    /** Guidance announcements muted: guidance keeps running and the screen keeps updating, silently. */
+    val muted = mutableStateOf(false)
+
+    private fun say(text: String, interrupt: Boolean = false) { if (!muted.value) app.speaker.say(text, interrupt) }
+
+    fun toggleMute() {
+        muted.value = !muted.value
+        if (muted.value) app.speaker.stop()
+        app.speaker.say(if (muted.value) "Guidance muted." else "Guidance unmuted.", true)
+    }
     private fun show(text: String) { current.value = text; refreshSteps() }
 
     private fun refreshSteps() {
@@ -353,9 +362,10 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
         }
     }
 
+    /** Repeat the current instruction. Speaks even when guidance is muted, because you asked. */
     fun repeat() {
         val text = current.value.ifBlank { status.value }
-        say(text.ifBlank { "No guidance running." }, true)
+        app.speaker.say(text.ifBlank { "No guidance running." }, true)
     }
 
     fun stop(silent: Boolean = false) {
@@ -364,7 +374,7 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
         job?.cancel(); job = null
         simJob?.cancel(); simJob = null
         follower = null; trip = null
-        if (wasActive && !silent) say("Guidance stopped.", true)
+        if (wasActive && !silent) app.speaker.say("Guidance stopped.", true)
     }
 
     private fun minutes(s: Double): String {

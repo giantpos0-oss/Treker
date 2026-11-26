@@ -107,6 +107,9 @@ class Settings(context: Context) {
     var gpsAccuracy by enumPref("gps_accuracy", GpsAccuracy.TIGHT)
     var arrivalDistance by enumPref("arrival_distance", ArrivalDistance.NORMAL)
 
+    /** Say when the GPS signal turns weak or good again. */
+    var announceGps by bool("announce_gps", true)
+
     // Shake
     var shakeWhereAmI by bool("shake_where_am_i", true)
     var shakeStrength by enumPref("shake_strength", ShakeStrength.MEDIUM)
