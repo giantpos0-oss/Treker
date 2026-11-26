@@ -1,5 +1,10 @@
 # Treker release notes
 
+## Version 0.1.5
+
+- Fixed: Treker could name the wrong street, such as a trail behind your house, right after starting or indoors. It was trusting rough first positions. Now nothing is named until GPS has given 5 precise readings in a row, every street name needs a precise reading, and a new street is only announced after 3 precise readings agree.
+- Fixed: when you're standing still, a trail or footpath beside you no longer beats the street you're on. Trails and paths are named when you're on them.
+
 ## Version 0.1.4
 
 - Removed: the Announce while guiding switches from the Routes tab during guidance. They're in Help and settings, under Announcements and verbosity, only.

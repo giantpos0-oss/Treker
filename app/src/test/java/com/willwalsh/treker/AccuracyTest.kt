@@ -93,6 +93,22 @@ class AccuracyTest {
         return StreetArea(origin, 600.0, ways, n)
     }
 
+    @Test fun streetBeatsANearbyTrailWhenStandingStill() {
+        // A street running east-west, and a footpath 30 m north of it, behind the houses.
+        val n = HashMap<Long, LatLon>()
+        n[1] = Geo.move(origin, 270.0, 100.0); n[2] = Geo.move(origin, 90.0, 100.0)
+        val north = Geo.move(origin, 0.0, 30.0)
+        n[3] = Geo.move(north, 270.0, 100.0); n[4] = Geo.move(north, 90.0, 100.0)
+        val t = StreetArea(origin, 600.0, listOf(
+            Way(1, "Emily Morgan Circle", "residential", listOf(1, 2)),
+            Way(2, "Pecan Grove Levee Trail", "footway", listOf(3, 4)),
+        ), n)
+        // Standing in a house 17 m from the street and 13 m from the trail: it's the street.
+        assertEquals("Emily Morgan Circle", t.nearestStreet(Geo.move(origin, 0.0, 17.0))!!.first.name)
+        // Actually on the trail: it's the trail.
+        assertEquals("Pecan Grove Levee Trail", t.nearestStreet(Geo.move(origin, 0.0, 28.0))!!.first.name)
+    }
+
     @Test fun dividedRoadIsOneIntersection() {
         val t = town()
         assertEquals(2, t.intersections.size)

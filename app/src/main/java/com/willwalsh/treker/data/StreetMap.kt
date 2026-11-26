@@ -93,6 +93,9 @@ class StreetArea(val center: LatLon, val radius: Double, val ways: List<Way>, va
                 val b = nodes[w.nodes[i + 1]] ?: continue
                 val d = distanceToSegment(p, a, b)
                 var score = d
+                // A footpath or trail only wins when you're right on it; otherwise a real street nearby
+                // is almost always where you are (sidewalks and back-yard trails run beside streets).
+                if (w.kind in PATH_KINDS && d > 6) score += 12.0
                 if (course != null && d < 40) {
                     val diff = Math.abs(Geo.angleDiff(course, Geo.bearing(a, b)))
                     val along = minOf(diff, 180 - diff) // either direction along the street
@@ -110,6 +113,9 @@ class StreetArea(val center: LatLon, val radius: Double, val ways: List<Way>, va
             .minByOrNull { n -> nodes[n]?.let { Geo.distance(p, it) } ?: Double.MAX_VALUE }
 
     companion object {
+        /** OpenStreetMap kinds of way that are paths rather than streets. */
+        val PATH_KINDS = setOf("footway", "path", "cycleway", "bridleway", "track", "steps", "pedestrian", "corridor")
+
         /** How far along the segment a-b the point nearest [p] is, from 0 (at a) to 1 (at b). */
         fun projectT(p: LatLon, a: LatLon, b: LatLon): Double {
             val k = Math.cos(Math.toRadians(p.lat)) * 111_320.0
