@@ -7,6 +7,8 @@ plugins {
 android {
     namespace = "com.willwalsh.treker"
     compileSdk = 36
+    // The NDK is only used to strip debugging data from the routing engine, which shrinks the app a lot.
+    System.getenv("ANDROID_NDK_HOME")?.takeIf { file(it).exists() }?.let { ndkPath = it }
 
     defaultConfig {
         applicationId = "com.willwalsh.treker"
