@@ -79,7 +79,8 @@ fun BigButton(label: String, modifier: Modifier = Modifier, onClick: () -> Unit)
 fun placeActions(app: TrekerApp, activity: Activity?, place: Place, inFavorites: Boolean): List<Pair<String, () -> Unit>> {
     val list = ArrayList<Pair<String, () -> Unit>>()
     for (m in TravelMode.entries) list.add("Start in ${m.label.lowercase()} mode" to {
-        AppNav.tab.value = Tab.ROUTES; app.guidance.start(place, m)
+        AppNav.routePage.value = null
+        AppNav.tab.value = Tab.EXPLORE; app.guidance.start(place, m)
     })
     list.add("Virtual map exploration" to {
         AppNav.tab.value = Tab.BROWSE

@@ -88,8 +88,15 @@ object Geo {
     /** Distance in words: feet and miles, yards and miles, or meters and kilometers. */
     fun distanceWords(meters: Double, units: com.willwalsh.treker.Units): String {
         when (units) {
-            com.willwalsh.treker.Units.METERS ->
-                return if (meters < 1000) "${roundNice(meters)} meters" else "%.1f kilometers".format(meters / 1000.0)
+            com.willwalsh.treker.Units.METERS -> {
+                if (meters < 1000) return "${roundNice(meters)} meters"
+                val tenths = (meters / 100.0).roundToInt()
+                return when {
+                    tenths == 10 -> "1 kilometer"
+                    tenths % 10 == 0 -> "${tenths / 10} kilometers"
+                    else -> "${tenths / 10}.${tenths % 10} kilometers"
+                }
+            }
             com.willwalsh.treker.Units.YARDS -> {
                 val yards = meters * 1.09361
                 if (yards < 1000) return "${roundNice(yards)} yards"
@@ -100,7 +107,14 @@ object Geo {
             }
         }
         val miles = meters / 1609.344
-        return if (miles < 10) "%.1f miles".format(miles) else "${miles.roundToInt()} miles"
+        // "0.2 miles", "1 mile", "1.5 miles", "12 miles".
+        if (miles >= 10) return "${miles.roundToInt()} miles"
+        val tenths = (miles * 10).roundToInt()
+        return when {
+            tenths == 10 -> "1 mile"
+            tenths % 10 == 0 -> "${tenths / 10} miles"
+            else -> "${tenths / 10}.${tenths % 10} miles"
+        }
     }
 
     private fun roundNice(v: Double): Int = when {

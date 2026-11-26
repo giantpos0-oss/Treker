@@ -55,11 +55,13 @@ class AccuracyTest {
 
     @Test fun distanceWords() {
         assertEquals("100 feet", Geo.distanceWords(30.48, Units.FEET))
-        assertEquals("1.0 miles", Geo.distanceWords(1609.344, Units.FEET))
+        assertEquals("1 mile", Geo.distanceWords(1609.344, Units.FEET))
+        assertEquals("2 miles", Geo.distanceWords(3218.7, Units.FEET))
+        assertEquals("0.2 miles", Geo.distanceWords(321.9, Units.FEET))
         assertEquals("30 meters", Geo.distanceWords(30.0, Units.METERS))
         assertEquals("1.5 kilometers", Geo.distanceWords(1500.0, Units.METERS))
         assertEquals("100 yards", Geo.distanceWords(91.44, Units.YARDS))
-        assertEquals("1.0 miles", Geo.distanceWords(1609.344, Units.YARDS))
+        assertEquals("1 mile", Geo.distanceWords(1609.344, Units.YARDS))
     }
 
     @Test fun routeShapeDecodes() {
@@ -128,7 +130,7 @@ class AccuracyTest {
         assertEquals("Oak Avenue", t.nearestStreet(p, 0.0)!!.first.name)
     }
 
-    @Test fun turnsAreAnnouncedBeforeAndAtTheTurn() {
+    @Test fun walkingTurnsAreAnnouncedHumanWareStyle() {
         // Walk 150 m east, turn left, walk 100 m north.
         val corner = Geo.move(origin, 90.0, 150.0)
         val end = Geo.move(corner, 0.0, 100.0)
@@ -145,7 +147,7 @@ class AccuracyTest {
         var arrived = false
         var off = 0
         val f = RouteFollower(route, true, Units.FEET, { said.add(it) }, {}, { off++ }, { arrived = true })
-        f.begin()
+        assertEquals("Walk east on Main Street.", f.firstInstruction())
         var pos = origin
         fun step(bearing: Double, meters: Double) {
             var left = meters
@@ -155,13 +157,40 @@ class AccuracyTest {
             }
         }
         step(90.0, 150.0)
+        // Before the turn is made, nothing about what comes after it.
+        assertTrue("no continue before the turn: $said", said.none { it.startsWith("Continue") })
         step(0.0, 100.0)
-        val heads = said.filter { it.startsWith("In ") && it.contains("turn left onto Oak Avenue") }
-        assertTrue("heads-up before the turn: $said", heads.isNotEmpty())
-        assertTrue("turn said at the corner: $said", said.contains("Turn left onto Oak Avenue."))
-        assertTrue("heads-up comes before the turn", said.indexOf(heads.first()) < said.indexOf("Turn left onto Oak Avenue."))
+        val heads = said.indexOfFirst { it == "In 200 feet, turn left onto Oak Avenue." }
+        val ready = said.indexOf("Get ready to turn left onto Oak Avenue.")
+        val turn = said.indexOf("Turn left onto Oak Avenue.")
+        val cont = said.indexOfFirst { it.startsWith("Continue for ") && it.contains("Then, arrive at your destination.") }
+        assertTrue("heads-up: $said", heads >= 0)
+        assertTrue("get ready after heads-up: $said", ready > heads)
+        assertTrue("turn after get ready: $said", turn > ready)
+        assertTrue("continue only after the turn: $said", cont > turn)
         assertEquals("never off route", 0, off)
         assertTrue("arrived", arrived)
+    }
+
+    @Test fun drivingInstructionsRepeatAtTwoMilesOneMileAndPointTwo() {
+        // Drive 5 km east, then turn right.
+        val corner = Geo.move(origin, 90.0, 5000.0)
+        val end = Geo.move(corner, 180.0, 500.0)
+        val route = Route(listOf(origin, corner, end), listOf(
+            Maneuver("Drive east on Main Street.", "", "", 0, 5000.0, 2),
+            Maneuver("Turn right onto Oak Avenue.", "", "", 1, 500.0, 10),
+            Maneuver("You have arrived.", "", "", 2, 0.0, 4),
+        ), 5500.0, 400.0)
+        val said = ArrayList<String>()
+        val f = RouteFollower(route, false, Units.FEET, { said.add(it) }, {}, {}, {})
+        var pos = origin
+        var left = 5100.0
+        while (left > 0) { pos = Geo.move(pos, 90.0, 10.0); left -= 10; f.onFix(Fix(pos, 5f, 13f, 90.0, 0)) }
+        assertTrue(said.toString(), said.contains("In 2 miles, turn right onto Oak Avenue."))
+        assertTrue(said.toString(), said.contains("In 1 mile, turn right onto Oak Avenue."))
+        assertTrue(said.toString(), said.contains("Get ready to turn right onto Oak Avenue."))
+        assertTrue(said.toString(), said.contains("Turn right onto Oak Avenue."))
+        assertTrue(said.toString(), said.indexOf("In 2 miles, turn right onto Oak Avenue.") < said.indexOf("In 1 mile, turn right onto Oak Avenue."))
     }
 
     @Test fun nextIntersectionAlongTheStreet() {

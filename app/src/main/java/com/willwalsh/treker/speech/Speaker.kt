@@ -112,6 +112,13 @@ class Speaker(context: Context, private val settings: com.willwalsh.treker.Setti
 
     fun stop() { if (ready) tts.stop(); inFlight.set(0) }
 
+    private val tone by lazy {
+        runCatching { android.media.ToneGenerator(android.media.AudioManager.STREAM_NOTIFICATION, 70) }.getOrNull()
+    }
+
+    /** A short beep, like HumanWare's when an intersection is detected. */
+    fun beep() { runCatching { tone?.startTone(android.media.ToneGenerator.TONE_PROP_BEEP, 120) } }
+
     val speaking: Boolean get() = ready && tts.isSpeaking
 
     @Suppress("DEPRECATION")

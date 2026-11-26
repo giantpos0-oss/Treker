@@ -30,7 +30,7 @@ Live exploration announces information as you move, all the time, unless you've 
 
 Below that is a line saying how good the GPS signal is.
 
-- Where am I says where you are, in HumanWare's style: the way you're heading, then your address with the number first, then the next intersection along your street, how far it is and how many ways it has, then your city, county, state and zip code. For example: Heading north. 1303 Emily Morgan Circle. Next intersection in 250 feet, 3-way, Emily Morgan Circle crossing Southern Place. Richmond, Fort Bend County, Texas, zip code 7 7 4 0 6. If you're standing still, the heading comes from the way the top of your phone points. If your house number is worked out from the street's number ranges rather than mapped, it starts with About. Shaking the phone does the same as this button.
+- Where am I says where you are, in HumanWare's style: the way you're heading, then Near and your address with the number first, and your city, then the next intersection along your street, how far it is, how many ways it has, and the two streets. For example: Heading north. Near 1303 Emily Morgan Circle, Richmond. Next intersection in 250 feet. 3 ways, Emily Morgan Circle crossing Southern Place. If you're standing still, the heading comes from the way the top of your phone points. Shaking the phone does the same as this button. While you're being guided, Where am I tells you about your route instead, as described under Active route tab.
 - Nearest intersection says the closest intersection, its direction and distance.
 - Places nearby lists the places around you, nearest first. Each place has actions, described under Place actions below.
 
@@ -51,7 +51,14 @@ On the Explore tab, under Announce while moving, each piece of information live 
 
 Each switch that's on also shows the latest information for it, so you can check it any time by moving through the switches with your screen reader, for example City: Austin, switch on; or Approaching intersections: Main Street and Oak Avenue, 100 feet, switch on. A switch that's off shows only its name.
 
-Country, state, county, city, neighborhood, zip code and street address are announced when they change. Street name is announced when you move onto a different street. Approaching intersections are announced when an intersection is ahead of you in the direction you're walking. Places you pass are announced when you come within about 35 meters of them. Everything is looked up in the offline map, so live exploration works without an internet connection.
+Country, state, county, city, neighborhood, zip code and street address are announced when they change. Street name is announced when you move onto a different street. Places you pass are announced when you come within about 35 meters of them. Everything is looked up in the offline map, so live exploration works without an internet connection.
+
+Approaching intersections are announced when an intersection is ahead of you in the direction you're going, and how depends on whether you're walking or in a vehicle:
+
+- Walking: a short beep, then the kind of intersection and both streets, for example: 3-way intersection. Main Street crossing Oak Avenue.
+- In a vehicle: only the cross street you're passing, for example: Oak Avenue.
+
+Like StellarTrek, Treker works out whether you're walking or in a vehicle from your speed. Faster than about 15 miles per hour for two minutes means you're in a vehicle; slower than about 7 miles per hour for two minutes means you're walking. You can fix it to always pedestrian or always motorized in Help and settings, under Announcements and verbosity, then Travel mode. While you're being guided, the travel mode of the route is used.
 
 Recent announcements, at the bottom of the Explore tab, lists the last things Treker said, newest first.
 
@@ -77,11 +84,26 @@ Start from my location moves you back to where you really are.
 
 Type an address or a place name in the single Address or place name field, then press Search, or the search key on the keyboard. A whole address goes in the one field, for example 123 Main Street, Springfield, Illinois. You can also type a business name or a kind of place, like coffee. Results are listed with their distance from you. Each result has the place actions below.
 
-While guidance is running, the top of the Routes tab shows the current instruction and has Repeat instruction, Pause, Stop guidance and Report a route problem buttons. Pause is the same as on the Explore tab; Repeat instruction still speaks while paused.
+When you start guidance, Treker takes you to the Active route tab, which takes the Explore tab's place at the bottom left until guidance stops. The Routes tab then only has a Go to Active route button above the search.
 
 Below them is the list of steps.
 
-What's announced while you're being guided, such as street names and intersections, is set separately from the Explore tab, in Help and settings, under Announcements and verbosity, then Announce while guiding. So you can, for example, hear every intersection while exploring but only street names while following a route.
+
+# Active route tab
+
+While guidance is running, the first tab at the bottom is called Active route instead of Explore. Everything for the route you're following is here, and it updates by itself as you move, so you don't need to leave the tab.
+
+At the top it shows, for example: Motorized guidance. To. Corner Cafe. Then the next instruction, the distance remaining, the distance traveled, and anything Treker is doing, like recalculating.
+
+The buttons are:
+
+- Repeat instruction: says the next instruction again, with how far away it is. It still speaks while paused.
+- Where am I: says On route. To. and your destination, then Traveled and Remaining, then the next intersection, worded the same as when exploring, then the next instruction. For example: On route. To. Corner Cafe. Traveled: 1.2 miles. Remaining: 3 miles. Next intersection in 250 feet. 3 ways, Emily Morgan Circle crossing Southern Place. In 0.3 miles, turn right onto FM 359. Shaking the phone does the same.
+- Recalculate route: makes a new route straight away from where you are now, in the direction you're going.
+- Step-by-step directions: opens a list of every instruction still to come, numbered. Use Navigate up to go back.
+- Announcements while guiding: opens the switches for what's announced while you're being guided, like street names and intersections. They're the same items as the Explore tab's Announce while moving, but set separately, so you can, for example, hear every intersection while exploring but only street names while following a route. Use Navigate up to go back.
+- Report a route problem: reports that the route was wrong or unsafe, here.
+- Stop guidance: ends the route. The Explore tab comes back.
 
 # Place actions
 
@@ -95,9 +117,19 @@ Every place in Treker, whether a search result, a place nearby or a favorite, ha
 
 # Guidance
 
-Pedestrian and motorized guidance work offline. Treker says how far it is and about how long it takes, then tells you each turn twice: a heads-up before you reach it, and again when you're there. If you leave the route, Treker says Off route, recalculating, and makes a new route from where you are.
+Pedestrian and motorized guidance work offline. When a route starts, Treker says the kind of guidance, where to, and how long the route is, then the first instruction. For example: Motorized guidance. To. Corner Cafe. Route length, 4.2 miles. Head southeast on Emily Morgan Circle. Public transit routes start with Public transit guidance. To. and the destination in the same way.
 
-Public transit guidance needs the internet. It tells you each step: walk to the stop, which line to take and which way it's headed, when it leaves, how many stops to ride, and where to get off. Walks to and from stops are guided turn by turn. On the ride, Treker names each stop as you pass it, says when yours is next, and tells you when to get off.
+In a vehicle, each instruction is said:
+
+- 2 miles before, for example: In 2 miles, turn left onto Main Street.
+- 1 mile before, the same way.
+- 0.2 miles before: Get ready to turn left onto Main Street.
+- At the turn: Turn left onto Main Street.
+- Once you've made the turn: Continue for 3 miles. Then, the next instruction.
+
+Walking works the same way, with shorter distances: about 200 feet before, then Get ready to, about 65 feet before, then at the turn, then Continue for and the next instruction once you're round it. Short steps skip the early warnings.
+
+If you leave the route or head the wrong way, Treker says Off route, recalculating, and makes a new route from where you are, in the direction you're already going, like Google Maps or Waze, rather than telling you to turn around. It then says New route, its length and the first instruction.
 
 # Favorites tab
 
@@ -117,7 +149,7 @@ Treker is built so it doesn't tell you something wrong with confidence.
 - A trail or footpath, such as one behind your house, is only named when you're on it; otherwise the street nearby wins.
 - A divided road, with separate lanes each way, is announced as one intersection, not two.
 - Zip codes come from the U.S. Census Bureau's zip code areas, so they're right even where no one has mapped addresses.
-- The nearest street address is taken from the street you're on. Where the map has no house mapped close by, Treker uses the real address points counties publish where there are any, and otherwise works out your house number from the Census Bureau's house number ranges for your street and which side of it you're on, and says about in front of it, for example about 1303 Emily Morgan Circle, because it's an estimate.
+- The nearest street address is taken from the street you're on. Where the map has no house mapped close by, Treker uses the real address points counties publish where there are any, and otherwise works out your house number from the Census Bureau's house number ranges for your street and which side of it you're on, and says near in front of it, for example near 1303 Emily Morgan Circle.
 - Outside city limits, as in many neighborhoods, Treker gives the city your mail goes to, like Richmond.
 - Every new version of Treker is checked by automatic tests of distances, directions, which street you're on, intersections, turn announcements and noticing when you leave a route. Every map is checked before it's published, so a broken map never reaches your phone.
 
@@ -165,7 +197,7 @@ Speech: Treker's own voice, which speaks live exploration, What's Around and gui
 - Pitch and volume.
 - Test speech plays a sample announcement.
 
-Announcements and verbosity: how much live exploration says, set separately for streets, intersections, places you pass, and the country, state, county, city and zip code. Each has three levels, and each option says what you'll hear, for example: Brief, for example: Main Street. Detailed intersections say what kind of intersection it is, like a T intersection or a 4-way intersection, and where it is, like ahead. Detailed streets say what kind of street it is, like a residential street or a major road. Announce intersections ahead sets how early intersections are announced, from about 50 feet to about 200 feet. Announce while guiding is here too, as its own button saying how many are on: the same switches as the Explore tab's Announce while moving, used instead of them while route guidance is running, in every travel mode. The switches for while you're exploring are on the Explore tab.
+Announcements and verbosity: how much live exploration says, set separately for streets, intersections, places you pass, and the country, state, county, city and zip code. Each has three levels, and each option says what you'll hear, for example: Brief, for example: Main Street. Detailed intersections when walking also say how far and which way the intersection is, like 100 feet, ahead. In a vehicle, intersections are always just the cross street. Detailed streets say what kind of street it is, like a residential street or a major road. Announce intersections ahead sets how early intersections are announced, from about 50 feet to about 200 feet. Travel mode is here too: automatic, from your speed, which is the default; always pedestrian; or always motorized. The switches for what's announced while exploring are on the Explore tab, and those for while you're guided are on the Active route tab.
 
 Routes:
 

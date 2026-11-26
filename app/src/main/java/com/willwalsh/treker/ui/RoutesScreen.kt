@@ -69,23 +69,9 @@ fun RoutesScreen() {
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-        if (g.active.value || g.status.value.isNotBlank()) {
-            Heading("Guidance")
-            Text(g.status.value, fontSize = 18.sp, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
-            if (g.current.value.isNotBlank()) Text(g.current.value, fontSize = 20.sp, modifier = Modifier.padding(vertical = 6.dp))
-            if (g.active.value) {
-                BigButton("Repeat instruction") { g.repeat() }
-                BigButton("Stop guidance") { g.stop() }
-                BigButton("Report a route problem") {
-                    app.location.fix.value?.pos?.let {
-                        AppNav.report.value = ReportRequest(it, heard = g.current.value, problem = com.willwalsh.treker.data.Problem.ROUTE)
-                    }
-                }
-                if (g.steps.isNotEmpty()) {
-                    Heading("Steps")
-                    g.steps.forEachIndexed { i, s -> Text("${i + 1}. $s", fontSize = 17.sp, modifier = Modifier.padding(vertical = 4.dp)) }
-                }
-            }
+        if (g.active.value) {
+            Text("Guidance is running. Its controls are on the Active route tab.", fontSize = 16.sp)
+            BigButton("Go to Active route") { AppNav.tab.value = Tab.EXPLORE }
         }
 
         Heading("Where to?")

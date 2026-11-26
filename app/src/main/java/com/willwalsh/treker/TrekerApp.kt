@@ -59,6 +59,7 @@ class TrekerApp : Application() {
         whatsAround = WhatsAround(this, scope)
         walker = VirtualWalker(this)
         guidance = Guidance(this, scope)
+        com.willwalsh.treker.ui.AppNav.guiding = { guidance.active.value }
         // Reports made without internet go out the next time Treker starts.
         if (Reports.waiting > 0) scope.launch { Reports.sendWaiting() }
     }

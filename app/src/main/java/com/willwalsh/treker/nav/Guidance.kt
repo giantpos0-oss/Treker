@@ -19,8 +19,12 @@ import kotlinx.coroutines.launch
 enum class TravelMode(val label: String) { PEDESTRIAN("Pedestrian"), MOTORIZED("Motorized"), TRANSIT("Public transit") }
 
 /**
- * Follows you along a route and decides what to say: a heads-up before each turn, the turn itself,
- * and what comes after. Tells [onOffRoute] when you've clearly left the route.
+ * Follows you along a route and decides what to say, the way HumanWare's GPS does:
+ * - in a vehicle: "In 2 miles, turn left onto Main Street." and again at 1 mile; at 0.2 miles
+ *   "Get ready to turn left onto Main Street."; at the turn "Turn left onto Main Street.";
+ * - walking: "In 200 feet, ..." then "Get ready to ..." at about 65 feet, then the instruction at the turn;
+ * - once the turn has actually been made: "Continue for 2.3 miles. Then, turn right onto Oak Avenue."
+ * Tells [onOffRoute] when you've clearly left the route or are going the wrong way along it.
  */
 class RouteFollower(
     val route: Route,
@@ -36,17 +40,57 @@ class RouteFollower(
     private val along: DoubleArray = DoubleArray(pts.size).also { a ->
         for (i in 1 until pts.size) a[i] = a[i - 1] + Geo.distance(pts[i - 1], pts[i])
     }
+    private val total = if (along.isEmpty()) 0.0 else along.last()
     private var next = 1
     private var seg = 0
-    private var warnedFar = false
-    private var warnedNear = false
+    private var proj = 0.0
     private var offCount = 0
+    private var wrongWayCount = 0
     private var arrived = false
+    /** The instruction for the next maneuver has been said at the turn; waiting for you to make it. */
+    private var turnSaid = false
+    private var readySaid = false
+    private val headsUpSaid = HashSet<Double>()
+    /** How far the next maneuver was when the previous one was completed: heads-ups longer than this are skipped. */
+    private var legLength = 0.0
 
-    fun begin() {
-        val first = route.maneuvers.firstOrNull() ?: return
-        say(listOf(first.verbalBefore, first.verbalAfter).filter { it.isNotBlank() }.joinToString(" "))
-        show(first.text)
+    /** Live numbers for the Active route screen. */
+    var remainingMeters = total
+        private set
+    var toNextMeters = 0.0
+        private set
+
+    private val metric = units == Units.METERS
+    /** Heads-up distances: 2 miles and 1 mile driving (3 and 1.5 km), 200 feet walking (60 m). */
+    private val headsUps: List<Double> = when {
+        walking -> listOf(60.0)
+        metric -> listOf(3000.0, 1500.0)
+        else -> listOf(3218.7, 1609.3)
+    }
+    /** "Get ready to ..." distance: 0.2 miles driving (300 m), about 65 feet walking (20 m). */
+    private val getReady = when { walking -> 20.0; metric -> 300.0; else -> 321.9 }
+
+    init { legLength = maneuverAt(1) }
+
+    private fun maneuverAt(i: Int): Double = route.maneuvers.getOrNull(i)?.let { along[it.shapeIndex.coerceIn(0, pts.size - 1)] } ?: total
+
+    private fun isDestination(m: Maneuver) = m.type in 4..6
+
+    /** The instruction in words, as said at the turn. */
+    private fun words(m: Maneuver): String = if (isDestination(m)) "Arrive at your destination." else m.text.trim().let { if (it.endsWith(".")) it else "$it." }
+
+    /** The first instruction, said when guidance starts. */
+    fun firstInstruction(): String = route.maneuvers.firstOrNull()?.let { words(it) } ?: ""
+
+    /** "In 0.3 miles, turn left onto Main Street." for Where am I and Repeat instruction. */
+    fun nextInstructionWords(): String {
+        val m = route.maneuvers.getOrNull(next) ?: return ""
+        return "In ${Geo.distanceWords(toNextMeters, units)}, ${lowerFirst(words(m))}"
+    }
+
+    /** Every instruction still to come, with how far away it is, for Step-by-step directions. */
+    fun remainingSteps(): List<String> = route.maneuvers.withIndex().drop(next).map { (i, m) ->
+        "${Geo.distanceWords((maneuverAt(i) - proj).coerceAtLeast(0.0), units)}: ${words(m)}"
     }
 
     fun onFix(f: Fix) {
@@ -59,52 +103,74 @@ class RouteFollower(
             if (d < bestD) { bestD = d; bestSeg = i }
         }
         seg = bestSeg
-        val proj = along[seg] + StreetArea.projectT(f.pos, pts[seg], pts[seg + 1]) * (along[seg + 1] - along[seg])
+        proj = along[seg] + StreetArea.projectT(f.pos, pts[seg], pts[seg + 1]) * (along[seg + 1] - along[seg])
+        remainingMeters = (total - proj).coerceAtLeast(0.0)
 
-        val offLimit = (if (walking) 25.0 else 60.0) + f.accuracy.coerceAtMost(40f)
-        if (bestD > offLimit) { if (++offCount >= 3) { offCount = 0; onOffRoute(); return } } else offCount = 0
+        // Off the route: clearly away from it for a few fixes in a row.
+        val offLimit = (if (walking) 20.0 else 35.0) + f.accuracy.coerceAtMost(if (walking) 20f else 25f)
+        if (bestD > offLimit) { if (++offCount >= (if (walking) 3 else 2)) { offCount = 0; onOffRoute(); return } } else offCount = 0
+        // Going the wrong way along the route, like a missed turn followed by turning around.
+        val course = f.course
+        if (course != null && f.speed > (if (walking) 0.8f else 3f)) {
+            val segBearing = Geo.bearing(pts[seg], pts[seg + 1])
+            if (Math.abs(Geo.angleDiff(course, segBearing)) > 120) {
+                if (++wrongWayCount >= (if (walking) 6 else 3)) { wrongWayCount = 0; onOffRoute(); return }
+            } else wrongWayCount = 0
+        }
 
-        val total = along.last()
         // Walking, the end of the route is only reached when you're right at it; Guidance then guides the
         // last few steps to the destination itself.
-        if (total - proj < (if (walking) 4.0 else 30.0) && Geo.distance(f.pos, pts.last()) < (if (walking) 10.0 else 50.0)) {
+        if (remainingMeters < (if (walking) 4.0 else 30.0) && Geo.distance(f.pos, pts.last()) < (if (walking) 10.0 else 50.0)) {
             arrived = true; onArrive(); return
         }
 
         val m = route.maneuvers.getOrNull(next) ?: return
-        val mAt = along[m.shapeIndex.coerceIn(0, pts.size - 1)]
+        val mAt = maneuverAt(next)
         val toTurn = mAt - proj
-        val speed = f.speed.toDouble()
-        val far = if (walking) 60.0 else maxOf(400.0, speed * 25)
-        val near = if (walking) 20.0 else maxOf(100.0, speed * 9)
-        val now = if (walking) 7.0 else maxOf(25.0, speed * 2.5)
-        show("In ${Geo.distanceWords(toTurn.coerceAtLeast(0.0), units)}, ${m.text}")
+        toNextMeters = toTurn.coerceAtLeast(0.0)
 
+        if (turnSaid) {
+            // The instruction was given at the turn; once you've made it, say what comes next.
+            if (proj > mAt + (if (walking) 6.0 else 25.0)) completeManeuver()
+            return
+        }
+        show(nextInstructionWords())
+        val speed = f.speed.toDouble()
+        val now = if (walking) 6.0 else maxOf(30.0, speed * 3)
         when {
-            toTurn <= now -> {
-                say(m.verbalBefore)
-                advance()
+            isDestination(m) -> {
+                // Arrival is handled above; give the heads-ups and get-ready only.
+                if (toTurn <= getReady && !readySaid && legLength > getReady * 1.3) { readySaid = true; say("Get ready to arrive at your destination.") }
+                else headsUp(toTurn, m)
             }
-            toTurn <= near && !warnedNear -> {
-                warnedNear = true; warnedFar = true
-                say("In ${Geo.distanceWords(toTurn, units)}, ${lowerFirst(m.verbalBefore)}")
+            toTurn <= now -> { turnSaid = true; say(words(m)) }
+            toTurn <= getReady && !readySaid && legLength > getReady * 1.3 -> {
+                readySaid = true
+                say("Get ready to ${lowerFirst(words(m))}")
             }
-            toTurn <= far && !warnedFar && toTurn > near * 1.5 -> {
-                warnedFar = true
-                say("In ${Geo.distanceWords(toTurn, units)}, ${lowerFirst(m.verbalBefore)}")
-            }
+            else -> headsUp(toTurn, m)
         }
     }
 
-    private fun advance() {
-        val done = route.maneuvers.getOrNull(next)
-        next++; warnedFar = false; warnedNear = false
-        if (done != null && done.verbalAfter.isNotBlank() && next < route.maneuvers.size) say(done.verbalAfter)
-        route.maneuvers.getOrNull(next)?.let { show(it.text) }
+    private fun headsUp(toTurn: Double, m: Maneuver) {
+        if (toTurn <= getReady * 1.5) return
+        // The nearest heads-up distance you've just come within, if it fits in this stretch of the route.
+        val due = headsUps.filter { it !in headsUpSaid && toTurn <= it && legLength > it * 1.15 }
+        if (due.isEmpty()) return
+        headsUpSaid.addAll(headsUps.filter { it >= toTurn })
+        say("In ${Geo.distanceWords(due.minOrNull()!!, units)}, ${lowerFirst(words(m))}")
     }
 
-    /** The upcoming instructions, for the steps list. */
-    fun remaining(): List<String> = route.maneuvers.drop(next).map { it.text }
+    private fun completeManeuver() {
+        next++
+        turnSaid = false; readySaid = false; headsUpSaid.clear()
+        val nm = route.maneuvers.getOrNull(next) ?: return
+        val d = (maneuverAt(next) - proj).coerceAtLeast(0.0)
+        legLength = d
+        toNextMeters = d
+        say("Continue for ${Geo.distanceWords(d, units)}. Then, ${lowerFirst(words(nm))}")
+        show(nextInstructionWords())
+    }
 
     private fun lowerFirst(s: String) = if (s.length > 1 && s[0].isUpperCase() && !s[1].isUpperCase()) s[0].lowercase() + s.substring(1) else s
 }
@@ -121,6 +187,10 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
     val current = mutableStateOf("")
     val status = mutableStateOf("")
     val steps = mutableStateListOf<String>()
+    /** Live distances for the Active route screen, updated with every GPS fix. */
+    val remaining = mutableStateOf(0.0)
+    val traveled = mutableStateOf(0.0)
+    private var lastTraveledAt: LatLon? = null
 
     private val router by lazy { Router(app) }
     private var follower: RouteFollower? = null
@@ -137,9 +207,8 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
     private fun show(text: String) { current.value = text; refreshSteps() }
 
     private fun refreshSteps() {
-        steps.clear()
-        follower?.let { steps.addAll(it.remaining()) }
-        trip?.let { t -> steps.clear(); steps.addAll(t.legs.drop(t.index).map { it.instruction }) }
+        val list = follower?.remainingSteps() ?: trip?.let { t -> t.legs.drop(t.index).map { it.instruction } } ?: emptyList()
+        if (list != steps.toList()) { steps.clear(); steps.addAll(list) }
     }
 
     fun start(place: Place, travel: TravelMode) {
@@ -149,8 +218,8 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
         if (here == null) { say("Your location isn't known yet. Wait for GPS and try again.", true); return }
         destination.value = place; mode.value = travel; active.value = true
         current.value = ""; steps.clear()
+        traveled.value = 0.0; remaining.value = 0.0; lastTraveledAt = null
         status.value = "Getting a ${travel.label.lowercase()} route to ${place.name}."
-        say(status.value, true)
         job = scope.launch {
             // Real GPS feeds guidance unless practice mode is moving you along the route.
             launch { app.location.fix.collect { f -> if (simJob == null && f != null) fixes.value = f } }
@@ -170,9 +239,12 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
         lastApproachSaid = Double.MAX_VALUE; precisionWarned = false
         val route = router.route(here.pos, place.pos, walking, app.settings, here.course)
         follow(route, walking, onArrive = { if (walking) endOfWalkingRoute() else arrive() })
-        status.value = "${Geo.distanceWords(route.lengthMeters, units)} to ${place.name}, about ${minutes(route.seconds)}."
-        say(status.value)
-        follower?.begin()
+        remaining.value = route.lengthMeters
+        status.value = "Route length, ${Geo.distanceWords(route.lengthMeters, units)}, about ${minutes(route.seconds)}."
+        // HumanWare style: "Motorized guidance. To. Corner Cafe. Route length, 4.3 miles. Head north on Main Street."
+        say("${if (walking) "Pedestrian" else "Motorized"} guidance. To. ${place.name}. Route length, ${Geo.distanceWords(route.lengthMeters, units)}. " +
+            (follower?.firstInstruction() ?: ""), true)
+        follower?.let { current.value = it.firstInstruction() }
         if (app.settings.simulate) simulate(route, walking)
     }
 
@@ -189,31 +261,62 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
     }
 
     private fun follow(route: Route, walking: Boolean, onArrive: () -> Unit) {
+        lastWalking = walking; lastOnArrive = onArrive
         follower = RouteFollower(route, walking, units,
             say = { say(it) }, show = { show(it) },
             onOffRoute = { reroute(walking, onArrive) }, onArrive = onArrive)
         refreshSteps()
     }
 
-    private fun reroute(walking: Boolean, onArrive: () -> Unit) {
+    private var lastWalking = true
+    private var lastOnArrive: () -> Unit = {}
+
+    /**
+     * A new route from where you are, continuing the way you're going (like mainstream GPS apps), so it
+     * doesn't tell you to make U-turns to get back to the old route. [manual] is the Recalculate route button.
+     */
+    private fun reroute(walking: Boolean, onArrive: () -> Unit, manual: Boolean = false) {
         if (rerouting) return
-        val target = follower?.route?.points?.lastOrNull() ?: return
+        val target = destination.value?.pos ?: follower?.route?.points?.lastOrNull() ?: return
         val f = fixes.value ?: return
         rerouting = true
-        say("Off route. Recalculating.", true)
+        say(if (manual) "Recalculating." else "Off route. Recalculating.", true)
+        status.value = "Recalculating."
         scope.launch {
             try {
-                val r = router.route(f.pos, target, walking, app.settings, f.course)
+                // Only trust the direction of travel when actually moving.
+                val heading = f.course?.takeIf { f.speed > (if (walking) 0.8f else 2.5f) }
+                val r = router.route(f.pos, target, walking, app.settings, heading)
                 follow(r, walking, onArrive)
-                follower?.begin()
+                remaining.value = r.lengthMeters
+                status.value = "Route length, ${Geo.distanceWords(r.lengthMeters, units)}, about ${minutes(r.seconds)}."
+                val first = follower?.firstInstruction().orEmpty()
+                current.value = first
+                say("New route. Route length, ${Geo.distanceWords(r.lengthMeters, units)}. $first")
             } catch (e: Exception) {
-                say(e.message ?: "Couldn't recalculate.", true)
+                status.value = e.message ?: "Couldn't recalculate."
+                say(status.value, true)
             } finally { rerouting = false }
         }
     }
 
+    /** The Recalculate route button. */
+    fun recalculate() {
+        if (!active.value) { app.speaker.say("No guidance running.", true); return }
+        if (trip != null && follower == null) { app.speaker.say("Recalculating isn't available while riding transit.", true); return }
+        reroute(lastWalking, lastOnArrive, manual = true)
+    }
+
     private fun onFix(f: Fix) {
+        // Distance traveled, from reasonably precise fixes only.
+        if (f.accuracy <= 30f) {
+            lastTraveledAt?.let { val d = Geo.distance(it, f.pos); if (d in 1.0..300.0) traveled.value += d }
+            lastTraveledAt = f.pos
+        }
         follower?.onFix(f)
+        follower?.let { remaining.value = it.remainingMeters }
+        if (follower == null) destination.value?.let { remaining.value = Geo.distance(f.pos, it.pos) }
+        refreshSteps()
         if (mode.value == TravelMode.PEDESTRIAN && active.value) approach(f)
         trip?.let { onTransitFix(it, f) }
     }
@@ -268,7 +371,7 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
         if (t.legs.isEmpty()) throw Exception("No public transit trip found to ${place.name}.")
         trip = t
         status.value = "Transit trip to ${place.name}: ${t.summary}"
-        say(status.value)
+        say("Public transit guidance. To. ${place.name}. ${t.summary}", true)
         startLeg(t)
     }
 
@@ -282,6 +385,7 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
             val here = fixes.value?.pos ?: leg.from.pos
             runCatching { router.route(here, leg.to.pos, true, app.settings, fixes.value?.course) }.onSuccess { r ->
                 follow(r, true, onArrive = { advanceLeg() })
+                current.value = follower?.firstInstruction().orEmpty()
                 if (app.settings.simulate) simulate(r, true)
             }
         }
@@ -357,8 +461,26 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
 
     /** Repeat the current instruction. Speaks even while paused, because you asked. */
     fun repeat() {
-        val text = current.value.ifBlank { status.value }
+        val text = follower?.nextInstructionWords()?.ifBlank { null } ?: current.value.ifBlank { status.value }
         app.speaker.say(text.ifBlank { "No guidance running." }, true)
+    }
+
+    /**
+     * Where am I during guidance, HumanWare style:
+     * "On route. To. Corner Cafe. Traveled: 1.2 miles. Remaining: 3.4 miles. Next intersection in 250 feet.
+     * 3 ways, Main Street crossing Oak Avenue. In 0.3 miles, turn left onto Oak Avenue."
+     */
+    suspend fun whereAmIOnRoute(): String {
+        val parts = ArrayList<String>()
+        parts.add("On route.")
+        destination.value?.let { parts.add("To. ${it.name}.") }
+        parts.add("Traveled: ${Geo.distanceWords(traveled.value, units)}.")
+        parts.add("Remaining: ${Geo.distanceWords(remaining.value, units)}.")
+        val f = app.location.fix.value
+        if (f != null) app.explorer.nextIntersectionWords(f)?.let { parts.add(it) }
+        val nextWords = follower?.nextInstructionWords()?.ifBlank { null } ?: current.value.ifBlank { null }
+        nextWords?.let { parts.add(it.trim().let { w -> if (w.endsWith(".")) w else "$w." }) }
+        return parts.joinToString(" ")
     }
 
     fun stop(silent: Boolean = false) {

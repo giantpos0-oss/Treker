@@ -65,6 +65,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
 
     fun onFix(fix: Fix) {
         fix.course?.let { lastCourse = it; lastCourseTime = System.currentTimeMillis() }
+        updateTravelMode(fix)
         val weak = fix.accuracy > MAX_ACCURACY
         status.value = if (weak) "GPS is weak, accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.units)}"
         else "GPS good, accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.units)}"
@@ -209,24 +210,35 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
             if (on(LiveItem.INTERSECTIONS) && !gpsWeak && fix.accuracy <= MAX_ACCURACY) {
                 val course = fix.course ?: return@launch
                 val now = System.currentTimeMillis()
+                val driving = inVehicle()
+                // In a vehicle, the cross street is announced a few seconds before you pass it.
+                val reach = if (driving) maxOf(60.0, fix.speed * 5.0) else settings.intersectionDistance.meters
                 val ahead = map.clusters
                     .map { it to Geo.distance(fix.pos, it.pos) }
-                    .filter { (i, d) -> d in 8.0..settings.intersectionDistance.meters && Math.abs(Geo.angleDiff(course, Geo.bearing(fix.pos, i.pos))) < 30 }
+                    .filter { (i, d) -> d in 8.0..reach && Math.abs(Geo.angleDiff(course, Geo.bearing(fix.pos, i.pos))) < 30 }
                     .minByOrNull { it.second }
                 if (ahead != null && now - (announcedIntersections[ahead.first.node] ?: 0L) > 180_000) {
                     announcedIntersections[ahead.first.node] = now
                     val (i, d) = ahead
                     val dist = Geo.distanceWords(d, settings.units)
-                    lastIntersection.value = "${i.spoken()}, $dist"
-                    say(when (settings.intersectionVerbosity) {
-                        Verbosity.BRIEF -> i.spoken()
-                        Verbosity.NORMAL -> "Approaching ${i.spoken()}, $dist"
-                        Verbosity.DETAILED -> {
-                            val legs = map.legs(i)
-                            val kind = when { legs == 3 -> "T intersection"; legs >= 4 -> "$legs-way intersection"; else -> "intersection" }
-                            words("Approaching $kind", i.spoken(), dist, direction(fix, i.pos))
-                        }
-                    })
+                    val here = street.value
+                    if (driving) {
+                        // Like HumanWare in a vehicle: only the cross street, not the one you're on.
+                        val cross = i.streets.firstOrNull { it != here } ?: return@launch
+                        lastIntersection.value = cross
+                        say("$cross.")
+                    } else {
+                        // Walking: a beep, then the kind of intersection and the streets, yours first.
+                        val legs = map.legs(i)
+                        val kind = if (legs >= 3) "$legs-way intersection." else "Intersection."
+                        lastIntersection.value = "${i.crossing(here)}, $dist"
+                        app.speaker.beep()
+                        say(when (settings.intersectionVerbosity) {
+                            Verbosity.BRIEF -> "${i.crossing(here)}."
+                            Verbosity.NORMAL -> "$kind ${i.crossing(here)}."
+                            Verbosity.DETAILED -> "$kind ${i.crossing(here)}. " + words(dist, direction(fix, i.pos)) + "."
+                        })
+                    }
                 }
             }
         }
@@ -238,11 +250,41 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
     /** "near 1303 Emily Morgan Circle", or "about 1303 ..." when the number is worked out from the street's ranges. */
     private fun addressWords(a: AreaInfo, brief: Boolean): String {
         val addr = a.address ?: return ""
-        return when {
-            a.addressEstimated -> "about $addr"
-            brief -> addr
-            else -> "near $addr"
+        return if (brief) addr else "near $addr"
+    }
+
+    // ---- Walking or in a vehicle, the way HumanWare decides: from your speed, switching after two minutes ----
+
+    private var vehicle = false
+    private var modeCandidateSince = 0L
+
+    private fun updateTravelMode(fix: Fix) {
+        val now = System.currentTimeMillis()
+        // Faster than about 15 miles an hour points to a vehicle; slower than about 7 to walking.
+        val looksVehicle = when {
+            fix.speed > 6.7f -> true
+            fix.speed < 3f -> false
+            else -> vehicle
         }
+        if (looksVehicle == vehicle) { modeCandidateSince = 0L; return }
+        if (modeCandidateSince == 0L) modeCandidateSince = now
+        if (now - modeCandidateSince > 120_000) { vehicle = looksVehicle; modeCandidateSince = 0L }
+    }
+
+    /** True when announcements should be the in-vehicle kind. */
+    fun inVehicle(): Boolean {
+        when (settings.travelMode) {
+            com.willwalsh.treker.TravelModeSetting.PEDESTRIAN -> return false
+            com.willwalsh.treker.TravelModeSetting.MOTORIZED -> return true
+            else -> {}
+        }
+        val g = app.guidance
+        if (g.active.value) when (g.mode.value) {
+            com.willwalsh.treker.nav.TravelMode.MOTORIZED -> return true
+            com.willwalsh.treker.nav.TravelMode.PEDESTRIAN -> return false
+            else -> {}
+        }
+        return vehicle
     }
 
     /** Joins the parts of an announcement with commas, skipping any that are empty. */
@@ -303,11 +345,26 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
     }
 
     /**
-     * Where am I, in HumanWare's style:
-     * "Heading north. 1303 Emily Morgan Circle. Next intersection in 250 feet, 3-way, Emily Morgan Circle
-     * crossing Southern Place. Richmond, Fort Bend County, Texas, zip code 7 7 4 0 6."
+     * The next intersection along your street, HumanWare style:
+     * "Next intersection in 250 feet. 3 ways, Emily Morgan Circle crossing Southern Place."
+     */
+    suspend fun nextIntersectionWords(fix: Fix, heading: Double? = null): String? {
+        val map = StreetMap.around(fix.pos) ?: return null
+        val h = heading ?: fix.course ?: lastCourse?.takeIf { System.currentTimeMillis() - lastCourseTime < 120_000 }
+        val streetName = street.value ?: area.value?.street
+        val n = map.nextIntersection(fix.pos, h, streetName) ?: return null
+        val ways = if (n.legs >= 3) "${n.legs} ways, " else ""
+        return "Next intersection in ${Geo.distanceWords(n.distance, settings.units)}. $ways${n.intersection.crossing(streetName)}."
+    }
+
+    /**
+     * Where am I, exactly as HumanWare says it:
+     * "Heading north. Near 1303 Emily Morgan Circle, Richmond. Next intersection in 250 feet.
+     * 3 ways, Emily Morgan Circle crossing Southern Place."
+     * During route guidance it's the route version instead ([com.willwalsh.treker.nav.Guidance.whereAmIOnRoute]).
      */
     suspend fun whereAmI(): String {
+        if (app.guidance.active.value) return app.guidance.whereAmIOnRoute()
         val fix = app.location.fix.value ?: return "No GPS position yet."
         val parts = ArrayList<String>()
         // Heading: the way you're walking, else the way the phone points (read briefly), else the way you last walked.
@@ -323,18 +380,13 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         val map = StreetMap.around(fix.pos)
         val a = area.value ?: runCatching { Offline.areaInfo(fix.pos, map, fix.course) }.getOrNull()
         val streetName = street.value ?: a?.street
+        val place = a?.address ?: streetName
+        val city = a?.city
         when {
-            a?.address != null -> parts.add((if (a.addressEstimated) "About " else "") + a.address + ".")
-            streetName != null -> parts.add("On $streetName.")
+            place != null -> parts.add("Near $place" + (city?.let { ", $it" } ?: "") + ".")
+            city != null -> parts.add("Near $city.")
         }
-        map?.nextIntersection(fix.pos, heading, streetName)?.let { n ->
-            val ways = if (n.legs >= 3) "${n.legs}-way, " else ""
-            parts.add("${if (heading != null) "Next" else "Nearest"} intersection in ${Geo.distanceWords(n.distance, settings.units)}, " +
-                "$ways${n.intersection.crossing(streetName)}.")
-        }
-        val place = listOfNotNull(a?.neighborhood, a?.city, a?.county, a?.state).joinToString(", ")
-        val zip = a?.zip?.let { "zip code ${spellZip(it)}" }
-        listOf(place, zip).filter { !it.isNullOrBlank() }.joinToString(", ").takeIf { it.isNotBlank() }?.let { parts.add("$it.") }
+        nextIntersectionWords(fix, heading)?.let { parts.add(it) }
         if (fix.accuracy > MAX_ACCURACY) parts.add("GPS is only accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.units)}.")
         return if (parts.isEmpty()) "Looking up where you are." else parts.joinToString(" ")
     }

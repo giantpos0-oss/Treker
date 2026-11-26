@@ -32,12 +32,18 @@ object AppNav {
     val settingsPage = mutableStateOf(SettingsPage.MAIN)
     /** The single option open inside a settings page, by title, or null. */
     val settingsOption = mutableStateOf<String?>(null)
+    /** A sub-screen of the Active route tab, by title, or null. */
+    val routePage = mutableStateOf<String?>(null)
+    /** True while route guidance runs: the first tab is then Active route instead of Explore. */
+    var guiding: () -> Boolean = { false }
 
     /** True when the current screen is a sub-screen with somewhere to go up to. */
-    val canGoUp: Boolean get() = tab.value == Tab.HELP && (settingsPage.value != SettingsPage.MAIN || settingsOption.value != null)
+    val canGoUp: Boolean get() = (tab.value == Tab.HELP && (settingsPage.value != SettingsPage.MAIN || settingsOption.value != null)) ||
+        (tab.value == Tab.EXPLORE && guiding() && routePage.value != null)
 
     /** Navigate up from a sub-screen. */
     fun up() {
+        if (tab.value == Tab.EXPLORE) { routePage.value = null; return }
         if (tab.value != Tab.HELP) return
         if (settingsOption.value != null) settingsOption.value = null else settingsPage.value = SettingsPage.MAIN
     }
@@ -45,7 +51,14 @@ object AppNav {
     fun openPage(p: SettingsPage) { settingsOption.value = null; settingsPage.value = p }
 
     /** The title for the top bar. */
-    val title: String get() = if (tab.value == Tab.HELP) settingsOption.value ?: settingsPage.value.title else tab.value.label
+    val title: String get() = when {
+        tab.value == Tab.HELP -> settingsOption.value ?: settingsPage.value.title
+        tab.value == Tab.EXPLORE && guiding() -> routePage.value ?: "Active route"
+        else -> tab.value.label
+    }
+
+    /** The label for a tab at the bottom: the first is Active route while guiding. */
+    fun label(t: Tab): String = if (t == Tab.EXPLORE && guiding()) "Active route" else t.label
 
     val tab = mutableStateOf(Tab.EXPLORE)
     val browseFrom = mutableStateOf<Place?>(null)

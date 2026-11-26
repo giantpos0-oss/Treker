@@ -1,5 +1,15 @@
 # Treker release notes
 
+## Version 0.1.9
+
+- New Active route tab. While you're being guided, it replaces the Explore tab at the bottom left. It shows where you're going, the next instruction, the distance remaining and traveled, and updates by itself as you move. Its buttons are Repeat instruction, Where am I, Recalculate route, Step-by-step directions, Announcements while guiding, Report a route problem and Stop guidance. Announcements while guiding moved here from settings.
+- Where am I now reads: Heading north. Near 1303 Emily Morgan Circle, Richmond. Next intersection in 250 feet. 3 ways, Emily Morgan Circle crossing Southern Place.
+- While guided, Where am I says: On route. To. your destination. Traveled, Remaining, the next intersection, then the next instruction.
+- Routes start with, for example: Motorized guidance. To. Corner Cafe. Route length, 4.2 miles. Then the first instruction.
+- In a vehicle, instructions are said at 2 miles, at 1 mile, Get ready to at 0.2 miles, and at the turn. Continue for and the next instruction now come only after you've made the turn, not before.
+- Rerouting no longer tells you to make U-turns. The new route starts in the direction you're already going.
+- Intersections depend on how you're travelling. Walking: a beep, then for example 3-way intersection. Main Street crossing Oak Avenue. In a vehicle: just the cross street. Treker tells walking from driving by your speed over two minutes, like StellarTrek, or you can set Travel mode in Announcements and verbosity.
+
 ## Version 0.1.8
 
 - The Where am I button is back on the Explore tab, below the GPS line. It, shaking the phone, and the summary when Treker starts all say the same thing, in HumanWare's style, for example: Heading north. 1303 Emily Morgan Circle. Next intersection in 250 feet, 3-way, Emily Morgan Circle crossing Southern Place. Richmond, Fort Bend County, Texas, zip code 7 7 4 0 6.

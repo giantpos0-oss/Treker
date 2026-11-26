@@ -191,19 +191,17 @@ private fun AnnouncementSettings() {
 
     if (pageShowing) Text("Choose what live exploration announces, and how much it says for each.", fontSize = 16.sp)
     Choices("Streets", opts("Main Street", "On Main Street", "On Main Street, residential street"), s.streetVerbosity) { s.streetVerbosity = it }
-    Choices("Intersections", opts("Main Street and Oak Avenue", "Approaching Main Street and Oak Avenue, 100 feet",
-        "Approaching 4-way intersection, Main Street and Oak Avenue, 100 feet, ahead"), s.intersectionVerbosity) { s.intersectionVerbosity = it }
+    Choices("Intersections when walking", opts("Main Street crossing Oak Avenue.", "3-way intersection. Main Street crossing Oak Avenue.",
+        "3-way intersection. Main Street crossing Oak Avenue. 100 feet, ahead."), s.intersectionVerbosity) { s.intersectionVerbosity = it }
     Choices("Announce intersections ahead", AnnounceDistance.entries.map { it to it.label }, s.intersectionDistance) { s.intersectionDistance = it }
     Choices("Places you pass", opts("Corner Cafe", "Corner Cafe, to the right, 50 feet", "Corner Cafe, Cafe, to the right, 50 feet"), s.placeVerbosity) { s.placeVerbosity = it }
     Choices("Country, state, county, city and zip code", opts("Austin", "Austin, zip code 7 8 7 0 1", "Entering Austin, zip code 7 8 7 0 1"),
         s.areaVerbosity) { s.areaVerbosity = it }
 
     if (pageShowing) SwitchRow("Announce when the GPS signal turns weak or good again", s.announceGps) { s.announceGps = it }
-    val guiding = LiveItem.entries.filter { s.isOn(it, guiding = true) }
-    OptionPage("Announce while guiding", "${guiding.size} of ${LiveItem.entries.size} on") {
-        Text("Used instead of the Explore tab's switches while route guidance is running, in every travel mode.", fontSize = 16.sp)
-        for (item in LiveItem.entries) SwitchRow(item.label, s.isOn(item, guiding = true)) { s.set(item, it, guiding = true) }
-    }
+    Choices("Travel mode", com.willwalsh.treker.TravelModeSetting.entries.map { it to it.label }, s.travelMode) { s.travelMode = it }
+    if (pageShowing) Text("Walking, intersections come with a beep, their kind and both streets. In a vehicle, only the cross street is said. " +
+        "Automatic switches after about two minutes of walking or driving speed. During guidance, the travel mode of the route is used.", fontSize = 16.sp)
 }
 
 @Composable

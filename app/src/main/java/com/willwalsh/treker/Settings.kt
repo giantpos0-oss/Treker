@@ -19,6 +19,13 @@ enum class Units(val label: String) {
     METERS("Meters and kilometers"),
 }
 
+/** Walking or in a vehicle: worked out from your speed, or set by hand. */
+enum class TravelModeSetting(val label: String) {
+    AUTOMATIC("Automatic, from your speed"),
+    PEDESTRIAN("Always pedestrian"),
+    MOTORIZED("Always motorized"),
+}
+
 /** How much Treker says for one kind of announcement. */
 enum class Verbosity(val label: String) { BRIEF("Brief"), NORMAL("Normal"), DETAILED("Detailed") }
 
@@ -106,6 +113,7 @@ class Settings(context: Context) {
     var placeVerbosity by enumPref("verbosity_place", Verbosity.NORMAL)
     var areaVerbosity by enumPref("verbosity_area", Verbosity.NORMAL)
     var intersectionDistance by enumPref("intersection_distance", AnnounceDistance.NORMAL)
+    var travelMode by enumPref("travel_mode", TravelModeSetting.AUTOMATIC)
 
     // Accuracy
     var gpsAccuracy by enumPref("gps_accuracy", GpsAccuracy.TIGHT)

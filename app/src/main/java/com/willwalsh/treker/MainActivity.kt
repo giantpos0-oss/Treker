@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import com.willwalsh.treker.explore.ExploreService
+import com.willwalsh.treker.ui.ActiveRouteScreen
 import com.willwalsh.treker.ui.AppNav
 import com.willwalsh.treker.ui.BigButton
 import com.willwalsh.treker.ui.BrowseScreen
@@ -134,7 +135,7 @@ private fun AppRoot() {
                                 Tab.HELP -> Icons.Filled.Settings
                             }, contentDescription = null)
                         },
-                        label = { Text(t.label, fontSize = 12.sp, maxLines = 2) },
+                        label = { Text(AppNav.label(t), fontSize = 12.sp, maxLines = 2) },
                     )
                 }
             }
@@ -143,7 +144,7 @@ private fun AppRoot() {
         Box(Modifier.fillMaxSize().padding(padding)) {
             AppNav.report.value?.let { req -> ReportDialog(req) { AppNav.report.value = null } }
             when (tab) {
-                Tab.EXPLORE -> ExploreScreen()
+                Tab.EXPLORE -> if (app.guidance.active.value) ActiveRouteScreen() else ExploreScreen()
                 Tab.BROWSE -> BrowseScreen()
                 Tab.ROUTES -> RoutesScreen()
                 Tab.FAVORITES -> FavoritesScreen()
