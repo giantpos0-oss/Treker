@@ -177,11 +177,11 @@ private fun AnnouncementSettings() {
         Verbosity.BRIEF to "Brief: $brief", Verbosity.NORMAL to "Normal: $normal", Verbosity.DETAILED to "Detailed: $detailed")
 
     Text("Choose what live exploration announces, and how much it says for each.", fontSize = 16.sp)
-    Choices("Streets", opts("Main Street", "On Main Street", "On Main Street, heading north"), s.streetVerbosity) { s.streetVerbosity = it }
+    Choices("Streets", opts("Main Street", "On Main Street", "On Main Street, residential street"), s.streetVerbosity) { s.streetVerbosity = it }
     Choices("Intersections", opts("Main Street and Oak Avenue", "Approaching Main Street and Oak Avenue, 100 feet",
-        "Approaching 4-way intersection, Main Street and Oak Avenue, 100 feet, 12 o'clock"), s.intersectionVerbosity) { s.intersectionVerbosity = it }
+        "Approaching 4-way intersection, Main Street and Oak Avenue, 100 feet, ahead"), s.intersectionVerbosity) { s.intersectionVerbosity = it }
     Choices("Announce intersections ahead", AnnounceDistance.entries.map { it to it.label }, s.intersectionDistance) { s.intersectionDistance = it }
-    Choices("Places you pass", opts("Corner Cafe", "Corner Cafe, 3 o'clock, 50 feet", "Corner Cafe, Cafe, 3 o'clock, 50 feet"), s.placeVerbosity) { s.placeVerbosity = it }
+    Choices("Places you pass", opts("Corner Cafe", "Corner Cafe, right, 50 feet", "Corner Cafe, Cafe, right, 50 feet"), s.placeVerbosity) { s.placeVerbosity = it }
     Choices("Country, state, county, city and zip code", opts("Austin", "Austin, zip code 7 8 7 0 1", "Entering Austin, zip code 7 8 7 0 1"),
         s.areaVerbosity) { s.areaVerbosity = it }
 

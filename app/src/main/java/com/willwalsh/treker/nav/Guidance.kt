@@ -252,7 +252,8 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
         if (leg.walking) {
             if (follower == null) {
                 val d = Geo.distance(f.pos, leg.to.pos)
-                current.value = "${leg.to.name}: ${Geo.distanceWords(d, units)}, ${Geo.compassWord(Geo.bearing(f.pos, leg.to.pos))}"
+                current.value = listOf(leg.to.name, Geo.distanceWords(d, units), app.explorer.direction(f, leg.to.pos))
+                    .filter { it.isNotBlank() }.joinToString(", ")
                 if (d < 20) advanceLeg()
             }
             return

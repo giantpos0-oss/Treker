@@ -18,5 +18,6 @@ The first build of Treker. Everything runs on OpenStreetMap and works offline, e
 - Speech settings: speech engine, voice, rate, pitch and volume.
 - Verbosity settings: brief, normal or detailed announcements for streets, intersections, places and areas, and how early intersections are announced.
 - Route settings: fastest or shortest; avoid stairs, prefer sidewalks, avoid alleys and prefer lit streets when walking; avoid highways, toll roads and ferries when driving.
+- Directions as ahead, behind, left and right (the default) or clock face. No compass directions, except a route's first instruction.
 - Distances in feet and miles, yards and miles, or meters and kilometers.
 - Public transit trips from Transitous, with each stop named as you pass it.

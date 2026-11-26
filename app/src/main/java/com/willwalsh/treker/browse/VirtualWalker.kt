@@ -41,7 +41,7 @@ class VirtualWalker(private val app: TrekerApp) {
         val w = way ?: return
         say(buildString {
             if (label != null) append("Browsing from $label. ")
-            append("On ${w.name}, facing ${Geo.compassWord(heading())}. ")
+            append("On ${w.name}. ")
             append(lookAhead())
         })
     }
@@ -132,13 +132,13 @@ class VirtualWalker(private val app: TrekerApp) {
         maybeReload()
         val inter = a.clusterIntersection(n)
         val here = inter?.spoken() ?: "End of ${w.name}"
-        say("$here. Moved ${Geo.distanceWords(dist, units)} ${Geo.compassWord(heading())}. ${lookAhead()}")
+        say("$here. Moved ${Geo.distanceWords(dist, units)}. ${lookAhead()}")
     }
 
     fun turnAround() {
         val w = way ?: return say("Map browsing hasn't started.")
         if (index - dir in w.nodes.indices) dir = -dir
-        say("Turned around. Facing ${Geo.compassWord(heading())} on ${w.name}. ${lookAhead()}")
+        say("Turned around on ${w.name}. ${lookAhead()}")
     }
 
     fun turn(left: Boolean) {
@@ -150,7 +150,7 @@ class VirtualWalker(private val app: TrekerApp) {
             .minByOrNull { Math.abs(Geo.angleDiff(target, it.bearing)) }
         if (best == null) return say("No street to the ${if (left) "left" else "right"} here.")
         way = best.way; index = best.index; dir = best.dir
-        say("Turned ${if (left) "left" else "right"} onto ${best.way.name}, facing ${Geo.compassWord(best.bearing)}. ${lookAhead()}")
+        say("Turned ${if (left) "left" else "right"} onto ${best.way.name}. ${lookAhead()}")
     }
 
     fun describe() {
@@ -159,7 +159,7 @@ class VirtualWalker(private val app: TrekerApp) {
         val inter = n?.let { area?.clusterIntersection(it) }
         say(buildString {
             if (inter != null) append("At ${inter.spoken()}. ")
-            append("Facing ${Geo.compassWord(heading())} on ${w.name}. ")
+            append("On ${w.name}. ")
             append(lookAhead())
         })
     }

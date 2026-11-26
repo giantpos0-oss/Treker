@@ -59,6 +59,16 @@ object Geo {
         if (fine) compass16[(((bearing % 360) + 360) % 360 / 22.5).roundToInt() % 16]
         else compass8[(((bearing % 360) + 360) % 360 / 45.0).roundToInt() % 8]
 
+    /**
+     * Where [target] is relative to the way you're facing ([heading]): ahead, ahead right, right,
+     * behind right, behind, behind left, left or ahead left.
+     */
+    fun relativeWord(heading: Double, target: Double): String {
+        val rel = ((target - heading) % 360 + 360) % 360
+        return listOf("ahead", "ahead right", "right", "behind right", "behind", "behind left", "left", "ahead left")[
+            ((rel + 22.5) / 45.0).toInt() % 8]
+    }
+
     /** "2 o'clock" style direction of [target] relative to facing [heading]. */
     fun clockWord(heading: Double, target: Double): String {
         val rel = ((target - heading) % 360 + 360) % 360

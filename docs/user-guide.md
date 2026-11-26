@@ -39,7 +39,6 @@ On the Explore tab, under Announce while moving, each piece of information live 
 - Street name
 - Nearest street address
 - Approaching intersections
-- Direction of travel
 - Places you pass
 
 Country, state, county, city, neighborhood, zip code and street address are announced when they change. Street name is announced when you move onto a different street. Approaching intersections are announced when an intersection is ahead of you in the direction you're walking. Places you pass are announced when you come within about 35 meters of them. Everything is looked up in the offline map, so live exploration works without an internet connection.
@@ -56,9 +55,9 @@ Touch the large map browsing area, then:
 - Swipe down to turn around.
 - Swipe left to turn onto the street to your left.
 - Swipe right to turn onto the street to your right.
-- Tap to hear where you are and which way you're facing.
+- Tap to hear where you are.
 
-After each move Treker says where you are, which way you're facing, and what the next intersection is and how far.
+After each move Treker says where you are, the street you're on, and what the next intersection is and how far.
 
 On Android 14 and later, Treker asks the screen reader to let your swipes go straight through to the map browsing area. If your screen reader doesn't do that, the same moves are in the screen reader's actions menu on the map browsing area: Move forward, Turn around, Turn left, Turn right and Where am I.
 
@@ -129,7 +128,7 @@ Your fixes are listed on the Help and settings tab, under Map reports and fixes,
 
 # Shake for Where am I
 
-Shake your phone firmly, twice, to hear Where am I: your street, nearest address, city, zip code and direction. It works with the screen off and while you're in another app, as long as live exploration is running. You can switch it off, or change how hard you have to shake, in Help and settings, under Shake and What's Around.
+Shake your phone firmly, twice, to hear Where am I: your street, nearest address, city and zip code. It works with the screen off and while you're in another app, as long as live exploration is running. You can switch it off, or change how hard you have to shake, in Help and settings, under Shake and What's Around.
 
 # Help and settings tab
 
@@ -142,7 +141,7 @@ Speech: Treker's own voice, which speaks live exploration, What's Around and gui
 - Speech rate, pitch and volume.
 - Test speech plays a sample announcement.
 
-Announcements and verbosity: how much live exploration says, set separately for streets, intersections, places you pass, and the country, state, county, city and zip code. Each has three levels, Brief, Normal and Detailed, and each option includes an example of what you'll hear. Detailed intersections say what kind of intersection it is, like a T intersection or a 4-way intersection, and its direction. Announce intersections ahead sets how early intersections are announced, from about 50 feet to about 200 feet. The switches for each kind of announcement are here too, as well as on the Explore tab.
+Announcements and verbosity: how much live exploration says, set separately for streets, intersections, places you pass, and the country, state, county, city and zip code. Each has three levels, Brief, Normal and Detailed, and each option includes an example of what you'll hear. Detailed intersections say what kind of intersection it is, like a T intersection or a 4-way intersection, and where it is, like ahead. Detailed streets say what kind of street it is, like a residential street or a major road. Announce intersections ahead sets how early intersections are announced, from about 50 feet to about 200 feet. The switches for each kind of announcement are here too, as well as on the Explore tab.
 
 Routes:
 
@@ -156,7 +155,7 @@ Route settings apply to the next route you start.
 Units and directions:
 
 - Distances: feet and miles, yards and miles, or meters and kilometers.
-- Directions: clock face, like 2 o'clock, relative to the way you're walking or pointing; or compass, like northeast.
+- Directions: ahead, behind, left and right, which is the default, or clock face, like 2 o'clock. Both are relative to the way you're walking. When you've stopped, they're relative to the way the top of your phone points if What's Around is on, otherwise the way you were last walking. If Treker can't tell which way you're facing, it gives the distance without a direction rather than guess. Treker doesn't use compass directions, except that a route's first instruction can say which way to head, like Head southeast on Jane Doe Avenue.
 
 Shake and What's Around: shake for Where am I on or off, how hard to shake (light, medium or firm), vibration, and how far What's Around looks, from 50 to 500 meters.
 

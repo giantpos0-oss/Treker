@@ -39,6 +39,16 @@ class AccuracyTest {
         assertEquals("12 o'clock", Geo.clockWord(0.0, 2.0))
         // Facing east, something due north is at 9 o'clock.
         assertEquals("9 o'clock", Geo.clockWord(90.0, 0.0))
+        // Ahead, behind, left and right, relative to the way you face.
+        assertEquals("ahead", Geo.relativeWord(0.0, 10.0))
+        assertEquals("right", Geo.relativeWord(0.0, 90.0))
+        assertEquals("behind", Geo.relativeWord(0.0, 185.0))
+        assertEquals("left", Geo.relativeWord(0.0, 270.0))
+        assertEquals("ahead right", Geo.relativeWord(0.0, 40.0))
+        assertEquals("behind left", Geo.relativeWord(0.0, 220.0))
+        // Facing east, something due north is to the left.
+        assertEquals("left", Geo.relativeWord(90.0, 0.0))
+        assertEquals("ahead left", Geo.relativeWord(10.0, 330.0))
     }
 
     @Test fun distanceWords() {

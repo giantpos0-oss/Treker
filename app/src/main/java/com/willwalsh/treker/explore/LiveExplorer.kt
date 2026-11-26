@@ -44,7 +44,6 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
     private var pendingStreetCount = 0
     private val announcedIntersections = HashMap<Long, Long>()
     private val announcedPlaces = HashMap<String, Long>()
-    private var lastHeadingSaid: Double? = null
     private var streetJob: Job? = null
     private var placesJob: Job? = null
     private var lastPlacesAt: LatLon? = null
@@ -52,7 +51,11 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
 
     private var gpsWeak = false
 
+    private var lastCourse: Double? = null
+    private var lastCourseTime = 0L
+
     fun onFix(fix: Fix) {
+        fix.course?.let { lastCourse = it; lastCourseTime = System.currentTimeMillis() }
         val weak = fix.accuracy > MAX_ACCURACY
         status.value = if (weak) "GPS is weak, accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.units)}"
         else "GPS good, accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.units)}"
@@ -71,7 +74,6 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         noMapWarned = false
         checkArea(fix)
         checkStreets(fix)
-        checkHeading(fix)
         checkPlaces(fix)
     }
 
@@ -135,7 +137,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
                         say(when (settings.streetVerbosity) {
                             Verbosity.BRIEF -> name
                             Verbosity.NORMAL -> "On $name"
-                            Verbosity.DETAILED -> "On $name" + (fix.course?.let { ", heading ${Geo.compassWord(it)}" } ?: "")
+                            Verbosity.DETAILED -> "On $name" + (near.first.kind.let { streetKind(it) }?.let { ", $it" } ?: "")
                         })
                     }
                 }
@@ -157,7 +159,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
                         Verbosity.DETAILED -> {
                             val legs = map.legs(i)
                             val kind = when { legs == 3 -> "T intersection"; legs >= 4 -> "$legs-way intersection"; else -> "intersection" }
-                            "Approaching $kind, ${i.spoken()}, $dist, ${direction(fix, i.pos)}"
+                            words("Approaching $kind", i.spoken(), dist, direction(fix, i.pos))
                         }
                     })
                 }
@@ -165,14 +167,21 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         }
     }
 
-    private fun checkHeading(fix: Fix) {
-        if (!settings.isOn(LiveItem.HEADING)) return
-        val c = fix.course ?: return
-        val last = lastHeadingSaid
-        if (last == null || Math.abs(Geo.angleDiff(last, c)) > 50) {
-            lastHeadingSaid = c
-            say("Heading ${Geo.compassWord(c)}")
-        }
+    /** Joins the parts of an announcement with commas, skipping any that are empty. */
+    private fun words(vararg parts: String) = parts.filter { it.isNotBlank() }.joinToString(", ")
+
+    /** What kind of street it is, in plain words, for detailed street announcements. */
+    private fun streetKind(highway: String): String? = when (highway) {
+        "motorway", "trunk" -> "highway"
+        "primary", "secondary" -> "major road"
+        "tertiary" -> "through street"
+        "residential", "living_street", "unclassified" -> "residential street"
+        "service" -> "service road"
+        "pedestrian" -> "pedestrian street"
+        "footway", "path" -> "footpath"
+        "cycleway" -> "bike path"
+        "steps" -> "stairs"
+        else -> null
     }
 
     // Places you pass: businesses and landmarks close by, from the offline map.
@@ -192,8 +201,8 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
                 val dist = Geo.distanceWords(d, settings.units)
                 say(when (settings.placeVerbosity) {
                     Verbosity.BRIEF -> p.name
-                    Verbosity.NORMAL -> "${p.name}, ${direction(fix, p.pos)}, $dist"
-                    Verbosity.DETAILED -> listOf(p.name, p.kind, direction(fix, p.pos), dist).filter { it.isNotBlank() }.joinToString(", ")
+                    Verbosity.NORMAL -> words(p.name, direction(fix, p.pos), dist)
+                    Verbosity.DETAILED -> words(p.name, p.kind, direction(fix, p.pos), dist)
                 })
             }
         }
@@ -203,9 +212,15 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
     fun direction(fix: Fix?, target: LatLon, facing: Double? = null): String {
         val from = fix?.pos ?: return ""
         val b = Geo.bearing(from, target)
+        // The way you're walking; else the way the phone points (What's Around on); else the way you last walked.
         val heading = facing ?: fix.course ?: app.compass.heading.value
-        return if (settings.directionStyle == DirectionStyle.CLOCK && heading != null) Geo.clockWord(heading, b)
-        else Geo.compassWord(b)
+            ?: lastCourse?.takeIf { System.currentTimeMillis() - lastCourseTime < 120_000 }
+        // Without a direction of travel or the compass, there's no honest left or right to give.
+        heading ?: return ""
+        return when (settings.directionStyle) {
+            DirectionStyle.CLOCK -> Geo.clockWord(heading, b)
+            DirectionStyle.RELATIVE -> Geo.relativeWord(heading, b)
+        }
     }
 
     /** "Where am I": everything known about this spot, regardless of the on/off settings. */
@@ -218,7 +233,6 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         listOfNotNull(a?.neighborhood, a?.city, a?.county, a?.state).forEach { parts.add(it) }
         a?.zip?.let { parts.add("zip code ${spellZip(it)}") }
         a?.country?.let { parts.add(it) }
-        fix.course?.let { parts.add("heading ${Geo.compassWord(it)}") }
         if (fix.accuracy > 25) parts.add("GPS accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.units)}")
         return if (parts.isEmpty()) "Looking up where you are." else parts.joinToString(", ") + "."
     }
@@ -228,7 +242,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         val fix = app.location.fix.value ?: return "No GPS position yet."
         val map = StreetMap.around(fix.pos) ?: return "There's no offline map for where you are."
         val i = map.clusters.minByOrNull { Geo.distance(fix.pos, it.pos) } ?: return "No intersections nearby."
-        return "${i.spoken()}, ${direction(fix, i.pos)}, ${Geo.distanceWords(Geo.distance(fix.pos, i.pos), settings.units)}"
+        return words(i.spoken(), direction(fix, i.pos), Geo.distanceWords(Geo.distance(fix.pos, i.pos), settings.units))
     }
 
     /** Places around you, nearest first, for the list on the Explore tab. */

@@ -7,7 +7,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.staticCompositionLocalOf
 
 /** How a direction is spoken. */
-enum class DirectionStyle(val label: String) { CLOCK("Clock face, like 2 o'clock"), COMPASS("Compass, like northeast") }
+enum class DirectionStyle(val label: String) {
+    RELATIVE("Ahead, behind, left and right"),
+    CLOCK("Clock face, like 2 o'clock"),
+}
 
 /** How distances are spoken. */
 enum class Units(val label: String) {
@@ -44,7 +47,6 @@ enum class LiveItem(val key: String, val label: String, val defaultOn: Boolean) 
     STREET("street", "Street name", true),
     ADDRESS("address", "Nearest street address", false),
     INTERSECTIONS("intersections", "Approaching intersections", true),
-    HEADING("heading", "Direction of travel", false),
     PLACES("places", "Places you pass", true),
 }
 
@@ -66,7 +68,7 @@ class Settings(context: Context) {
     var whatsAround by bool("whats_around", false)
     var units by enumPref("units", if (prefs.getBoolean("metric", false)) Units.METERS else Units.FEET)
     val metric: Boolean get() = units == Units.METERS
-    var directionStyle by enumPref("direction_style", DirectionStyle.CLOCK)
+    var directionStyle by enumPref("direction_style", DirectionStyle.RELATIVE)
 
     // Speech
     /** Package of the preferred speech engine; empty uses the phone's default. */
