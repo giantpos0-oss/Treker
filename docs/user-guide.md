@@ -93,7 +93,9 @@ Save my current location saves where you are, named by its street address. Place
 
 Treker is built so it doesn't tell you something wrong with confidence.
 
-- When the GPS signal is weak, worse than about 25 meters, Treker says GPS signal weak and pauses street, intersection, address and place announcements until the signal is good again. It says GPS signal good again when it's back. The Explore tab always shows how accurate your position is.
+- Treker only names streets, intersections, addresses and places when your GPS position is precise to about 30 feet, or the accuracy you choose in Help and settings, under GPS accuracy. When it isn't, Treker says GPS signal weak and waits until the signal is good again, then says GPS signal good again. The Explore tab always shows how accurate your position is.
+- Treker asks your phone for its most precise location mode and also listens to the GPS chip directly. On phones with dual-frequency GPS, such as recent Pixels, that's accurate to a few feet out in the open. Positions are smoothed so one wild fix can't throw you across the street, but the accuracy Treker reports is always the GPS's own.
+- At the end of a walk, Treker doesn't stop at the end of the street. In the last 150 feet it counts down the distance to the destination itself and says which way it is, like Corner Cafe, 40 feet, ahead left. It only says you've arrived when you're within about 30 feet, or the arrival distance you choose, and GPS is precise enough to be sure. If it isn't, Treker says so instead of announcing an arrival it can't stand behind.
 - At a corner, Treker names the street you're walking along, not the cross street that happens to be a little closer.
 - A divided road, with separate lanes each way, is announced as one intersection, not two.
 - Zip codes come from the U.S. Census Bureau's zip code areas, so they're right even where no one has mapped addresses.
@@ -151,6 +153,11 @@ Routes:
 - Practice mode: walking and driving guidance move along the route by themselves, so you can try guidance at home.
 
 Route settings apply to the next route you start.
+
+GPS accuracy: shows how accurate your position is right now, and has two settings.
+
+- Required GPS accuracy: about 30 feet, which is the default and the most accurate; about 50 feet; or about 80 feet, which works in more places. Between tall buildings, under trees or indoors, GPS often can't reach 30 feet. When it can't, Treker tells you the signal is weak rather than guess.
+- Say you've arrived when walking within: about 15, 30 or 50 feet.
 
 Units and directions:
 

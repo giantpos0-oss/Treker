@@ -22,15 +22,54 @@ import kotlinx.coroutines.flow.asStateFlow
 data class Fix(val pos: LatLon, val accuracy: Float, val speed: Float, val course: Double?, val time: Long)
 
 /**
+ * Smooths GPS positions: each new fix is blended with the running estimate, weighted by how accurate
+ * each is, so one wild fix can't throw you across the street, while real movement (allowed for by
+ * your speed) still comes straight through.
+ */
+class PositionFilter {
+    private var lat = 0.0
+    private var lon = 0.0
+    private var variance = -1.0 // m², negative = no estimate yet
+    private var lastTime = 0L
+
+    fun reset() { variance = -1.0 }
+
+    /** Returns the smoothed position and its accuracy in meters. */
+    fun update(p: LatLon, accuracy: Float, speed: Float, timeMs: Long): Pair<LatLon, Float> {
+        val acc = accuracy.toDouble().coerceAtLeast(1.0)
+        val dt = (timeMs - lastTime) / 1000.0
+        if (variance < 0 || dt > 10 || dt < 0) {
+            lat = p.lat; lon = p.lon; variance = acc * acc; lastTime = timeMs
+            return p to accuracy
+        }
+        if (dt > 0) {
+            // How far you could have moved since the last fix, in meters per second.
+            val q = 2.0 + speed
+            variance += dt * q * q
+            lastTime = timeMs
+        }
+        val k = variance / (variance + acc * acc)
+        lat += k * (p.lat - lat)
+        lon += k * (p.lon - lon)
+        variance *= (1 - k)
+        return LatLon(lat, lon) to Math.sqrt(variance).toFloat()
+    }
+}
+
+/**
  * One shared stream of GPS fixes for the whole app, started by live exploration. Uses Android's
- * own location service (no Google services needed): its fused provider on Android 12 and later,
- * plain GPS before that.
+ * own location service (no Google services needed). On Android 12 and later it asks the fused
+ * provider for its highest-accuracy mode and also listens to the GPS chip directly, which on phones
+ * with dual-frequency GPS (like recent Pixels) is the most precise source; the more accurate of the
+ * two wins. Fixes are smoothed by [PositionFilter].
  */
 class LocationHub(context: Context) {
     private val lm = context.applicationContext.getSystemService(Context.LOCATION_SERVICE) as LocationManager
     private val _fix = MutableStateFlow<Fix?>(null)
     val fix: StateFlow<Fix?> = _fix.asStateFlow()
     private var running = false
+    private val filter = PositionFilter()
+    private var lastRawTime = 0L
 
     private val listener = object : LocationListener {
         override fun onLocationChanged(loc: Location) { accept(loc) }
@@ -42,27 +81,40 @@ class LocationHub(context: Context) {
 
     private fun accept(loc: Location) {
         val prev = _fix.value
-        // Ignore a much worse fix arriving soon after a good one.
+        if (loc.time < lastRawTime - 2000) return // stale fix arriving late
+        // A much worse fix arriving soon after a good one is ignored.
         if (prev != null && loc.accuracy > prev.accuracy * 3 && loc.time - prev.time < 5000) return
-        _fix.value = loc.toFix()
+        lastRawTime = maxOf(lastRawTime, loc.time)
+        val (pos, _) = filter.update(LatLon(loc.latitude, loc.longitude), loc.accuracy, loc.speed, loc.time)
+        // The accuracy reported is the GPS's own, not the smoothed estimate: smoothing steadies the
+        // position but mustn't make Treker more confident than the satellites justify.
+        _fix.value = Fix(pos, loc.accuracy, loc.speed,
+            if (loc.hasBearing() && loc.speed > 0.6f) loc.bearing.toDouble() else prev?.course?.takeIf { loc.speed > 0.6f },
+            loc.time)
     }
 
     @SuppressLint("MissingPermission")
     fun start() {
         if (running) return
         running = true
-        val providers = buildList {
-            if (Build.VERSION.SDK_INT >= 31 && lm.allProviders.contains(LocationManager.FUSED_PROVIDER)) add(LocationManager.FUSED_PROVIDER)
-            else {
-                if (lm.allProviders.contains(LocationManager.GPS_PROVIDER)) add(LocationManager.GPS_PROVIDER)
-                if (lm.allProviders.contains(LocationManager.NETWORK_PROVIDER)) add(LocationManager.NETWORK_PROVIDER)
-            }
-        }
+        filter.reset()
         runCatching {
-            for (p in providers) {
-                lm.requestLocationUpdates(p, 1000L, 0f, listener, Looper.getMainLooper())
-                lm.getLastKnownLocation(p)?.let { if (_fix.value == null) accept(it) }
+            val all = lm.allProviders
+            if (Build.VERSION.SDK_INT >= 31) {
+                val req = android.location.LocationRequest.Builder(1000L)
+                    .setQuality(android.location.LocationRequest.QUALITY_HIGH_ACCURACY)
+                    .setMinUpdateIntervalMillis(500L)
+                    .build()
+                val exec = java.util.concurrent.Executor { r -> android.os.Handler(Looper.getMainLooper()).post(r) }
+                for (p in listOf(LocationManager.FUSED_PROVIDER, LocationManager.GPS_PROVIDER)) {
+                    if (p in all) lm.requestLocationUpdates(p, req, exec, listener)
+                }
+            } else {
+                for (p in listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)) {
+                    if (p in all) lm.requestLocationUpdates(p, 1000L, 0f, listener, Looper.getMainLooper())
+                }
             }
+            for (p in all) lm.getLastKnownLocation(p)?.let { if (_fix.value == null && System.currentTimeMillis() - it.time < 60_000) accept(it) }
         }.onFailure { running = false }
     }
 
@@ -71,11 +123,6 @@ class LocationHub(context: Context) {
         running = false
         lm.removeUpdates(listener)
     }
-
-    private fun Location.toFix() = Fix(
-        LatLon(latitude, longitude), accuracy, speed,
-        if (hasBearing() && speed > 0.6f) bearing.toDouble() else null, time,
-    )
 }
 
 /**

@@ -65,7 +65,9 @@ class RouteFollower(
         if (bestD > offLimit) { if (++offCount >= 3) { offCount = 0; onOffRoute(); return } } else offCount = 0
 
         val total = along.last()
-        if (total - proj < (if (walking) 12.0 else 30.0) && Geo.distance(f.pos, pts.last()) < (if (walking) 20.0 else 50.0)) {
+        // Walking, the end of the route is only reached when you're right at it; Guidance then guides the
+        // last few steps to the destination itself.
+        if (total - proj < (if (walking) 4.0 else 30.0) && Geo.distance(f.pos, pts.last()) < (if (walking) 10.0 else 50.0)) {
             arrived = true; onArrive(); return
         }
 
@@ -163,12 +165,25 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
     }
 
     private suspend fun startRoute(here: Fix, place: Place, walking: Boolean) {
+        lastApproachSaid = Double.MAX_VALUE; precisionWarned = false
         val route = router.route(here.pos, place.pos, walking, app.settings, here.course)
-        follow(route, walking, onArrive = { arrive() })
+        follow(route, walking, onArrive = { if (walking) endOfWalkingRoute() else arrive() })
         status.value = "${Geo.distanceWords(route.lengthMeters, units)} to ${place.name}, about ${minutes(route.seconds)}."
         say(status.value)
         follower?.begin()
         if (app.settings.simulate) simulate(route, walking)
+    }
+
+    /** The route ends on the nearest street or path; the destination itself may be a few steps further. */
+    private fun endOfWalkingRoute() {
+        val dest = destination.value ?: return arrive()
+        val f = fixes.value ?: return arrive()
+        val d = Geo.distance(f.pos, dest.pos)
+        if (d <= app.settings.arrivalDistance.meters) return arrive()
+        follower = null
+        lastApproachSaid = d; lastApproachTime = System.currentTimeMillis()
+        current.value = listOf(dest.name, Geo.distanceWords(d, units), app.explorer.direction(f, dest.pos)).filter { it.isNotBlank() }.joinToString(", ")
+        say("End of the route. ${current.value}.", true)
     }
 
     private fun follow(route: Route, walking: Boolean, onArrive: () -> Unit) {
@@ -197,7 +212,44 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
 
     private fun onFix(f: Fix) {
         follower?.onFix(f)
+        if (mode.value == TravelMode.PEDESTRIAN && active.value) approach(f)
         trip?.let { onTransitFix(it, f) }
+    }
+
+    // ---- The last few steps of a walk: straight to the destination, not just the end of the street ----
+
+    private var lastApproachSaid = Double.MAX_VALUE
+    private var lastApproachTime = 0L
+    private var precisionWarned = false
+
+    /**
+     * Walking within about 150 feet of the destination: Treker says how far it is and which way,
+     * and only says you've arrived once you're within the arrival distance with GPS precise enough
+     * to be sure.
+     */
+    private fun approach(f: Fix) {
+        val dest = destination.value ?: return
+        val d = Geo.distance(f.pos, dest.pos)
+        if (d > 45 && follower != null) return
+        val s = app.settings
+        val precise = f.accuracy <= maxOf(s.gpsAccuracy.meters, s.arrivalDistance.meters.toFloat())
+        if (d <= s.arrivalDistance.meters && precise) { arrive(); return }
+        if (!precise) {
+            if (!precisionWarned) {
+                precisionWarned = true
+                say("Within about ${Geo.distanceWords(d + f.accuracy, units)} of ${dest.name}, but GPS isn't precise enough here to say exactly where.")
+            }
+            return
+        }
+        precisionWarned = false
+        val now = System.currentTimeMillis()
+        // Speak each time you've closed about a fifth of the remaining distance, at most every 3 seconds.
+        if (d < lastApproachSaid * 0.8 && now - lastApproachTime > 3000) {
+            lastApproachSaid = d; lastApproachTime = now
+            val words = listOf(dest.name, Geo.distanceWords(d, units), app.explorer.direction(f, dest.pos)).filter { it.isNotBlank() }
+            current.value = words.joinToString(", ")
+            say(current.value, true)
+        }
     }
 
     private fun arrive() {

@@ -6,6 +6,7 @@ import com.willwalsh.treker.data.RegionDb
 import com.willwalsh.treker.data.StreetArea
 import com.willwalsh.treker.data.Way
 import com.willwalsh.treker.location.Fix
+import com.willwalsh.treker.location.PositionFilter
 import com.willwalsh.treker.nav.Maneuver
 import com.willwalsh.treker.nav.Route
 import com.willwalsh.treker.nav.RouteFollower
@@ -147,6 +148,30 @@ class AccuracyTest {
     @Test fun dividedRoadCrossingHasFourLegs() {
         val t = town()
         assertEquals(4, t.legs(t.clusters[0]))
+    }
+
+    @Test fun oneWildFixDoesNotThrowYouAcrossTheStreet() {
+        val f = PositionFilter()
+        var pos = origin
+        var t = 0L
+        // Standing still with good 5 m fixes...
+        repeat(10) { f.update(pos, 5f, 0f, t); t += 1000 }
+        // ...then one bad 40 m jump with a 30 m accuracy.
+        val (est, _) = f.update(Geo.move(pos, 90.0, 40.0), 30f, 0f, t)
+        assertTrue("moved ${Geo.distance(origin, est)} m", Geo.distance(origin, est) < 8)
+    }
+
+    @Test fun smoothingKeepsUpWithWalking() {
+        val f = PositionFilter()
+        var pos = origin
+        var t = 0L
+        var est = origin
+        repeat(60) {
+            pos = Geo.move(pos, 90.0, 1.4); t += 1000
+            est = f.update(pos, 5f, 1.4f, t).first
+        }
+        // After a minute of walking, the smoothed position is within about 3 m (10 feet) of the truth.
+        assertTrue("lag ${Geo.distance(pos, est)} m", Geo.distance(pos, est) < 3)
     }
 
     @Test fun leavingTheRouteIsNoticed() {

@@ -28,6 +28,23 @@ enum class RouteType(val label: String) { FASTEST("Fastest"), SHORTEST("Shortest
 /** How hard a shake has to be to say where you are. */
 enum class ShakeStrength(val label: String, val g: Float) { LIGHT("Light", 2.0f), MEDIUM("Medium", 2.6f), FIRM("Firm", 3.3f) }
 
+/**
+ * How precise your GPS position must be before Treker names streets, intersections, addresses and
+ * places, or says you've arrived. Worse than this, Treker says the signal is weak and waits.
+ */
+enum class GpsAccuracy(val label: String, val meters: Float) {
+    TIGHT("About 30 feet or 9 meters, most accurate", 9.2f),
+    MEDIUM("About 50 feet or 15 meters", 15.3f),
+    LOOSE("About 80 feet or 25 meters, works in more places", 25f),
+}
+
+/** How close to a walking destination Treker says you've arrived. */
+enum class ArrivalDistance(val label: String, val meters: Double) {
+    CLOSE("About 15 feet or 5 meters", 4.6),
+    NORMAL("About 30 feet or 9 meters", 9.2),
+    WIDE("About 50 feet or 15 meters", 15.3),
+}
+
 /** When to announce an intersection ahead, in meters. */
 enum class AnnounceDistance(val label: String, val meters: Double) {
     CLOSE("Close, about 50 feet or 15 meters", 15.0),
@@ -85,6 +102,10 @@ class Settings(context: Context) {
     var placeVerbosity by enumPref("verbosity_place", Verbosity.NORMAL)
     var areaVerbosity by enumPref("verbosity_area", Verbosity.NORMAL)
     var intersectionDistance by enumPref("intersection_distance", AnnounceDistance.NORMAL)
+
+    // Accuracy
+    var gpsAccuracy by enumPref("gps_accuracy", GpsAccuracy.TIGHT)
+    var arrivalDistance by enumPref("arrival_distance", ArrivalDistance.NORMAL)
 
     // Shake
     var shakeWhereAmI by bool("shake_where_am_i", true)

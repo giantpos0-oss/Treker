@@ -14,6 +14,7 @@ The first build of Treker. Everything runs on OpenStreetMap and works offline, e
 - Offline maps for every U.S. state, Washington D.C., Puerto Rico and the U.S. Virgin Islands, refreshed monthly.
 - Accuracy: announcements pause when GPS is weak, the street you're walking along wins at corners, divided roads count as one intersection, zip codes come from Census Bureau zip code areas, and automatic tests check the math on every build.
 - Report a map problem from the Explore tab, any place, map browsing or guidance. Reports go to OpenStreetMap so volunteers can fix the map, and some fixes take effect on your phone straight away.
+- GPS accuracy down to about 30 feet: Treker uses the phone's most precise location mode and the GPS chip directly, smooths out wild fixes, and only names things or says you've arrived when GPS is that precise. The last 150 feet of a walk are guided straight to the destination, with distance and direction.
 - Shake the phone for Where am I, even with the screen off.
 - Speech settings: speech engine, voice, rate, pitch and volume.
 - Verbosity settings: brief, normal or detailed announcements for streets, intersections, places and areas, and how early intersections are announced.

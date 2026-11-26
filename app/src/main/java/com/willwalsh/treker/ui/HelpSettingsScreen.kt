@@ -32,6 +32,8 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.willwalsh.treker.AnnounceDistance
+import com.willwalsh.treker.ArrivalDistance
+import com.willwalsh.treker.GpsAccuracy
 import com.willwalsh.treker.BuildConfig
 import com.willwalsh.treker.DirectionStyle
 import com.willwalsh.treker.LiveItem
@@ -52,6 +54,7 @@ private enum class Page(val title: String) {
     ANNOUNCEMENTS("Announcements and verbosity"),
     ROUTES("Routes"),
     UNITS("Units and directions"),
+    ACCURACY("GPS accuracy"),
     GESTURES("Shake and What's Around"),
     MAPS("Offline maps"),
     REPORTS("Map reports and fixes"),
@@ -79,7 +82,7 @@ fun HelpSettingsScreen() {
                 BigButton("Open release notes in browser") { open("$REPO/release-notes.md") }
                 Text("Treker version ${BuildConfig.VERSION_NAME}", fontSize = 16.sp, modifier = Modifier.padding(vertical = 4.dp))
                 Heading("Settings")
-                for (p in listOf(Page.SPEECH, Page.ANNOUNCEMENTS, Page.ROUTES, Page.UNITS, Page.GESTURES, Page.MAPS, Page.REPORTS)) {
+                for (p in listOf(Page.SPEECH, Page.ANNOUNCEMENTS, Page.ROUTES, Page.UNITS, Page.ACCURACY, Page.GESTURES, Page.MAPS, Page.REPORTS)) {
                     BigButton(p.title) { page = p }
                 }
                 Heading("Help")
@@ -94,6 +97,7 @@ fun HelpSettingsScreen() {
             Page.ANNOUNCEMENTS -> AnnouncementSettings()
             Page.ROUTES -> RouteSettings()
             Page.UNITS -> UnitSettings()
+            Page.ACCURACY -> AccuracySettings()
             Page.GESTURES -> GestureSettings()
             Page.MAPS -> OfflineMapsSection()
             Page.REPORTS -> ReportsSection()
@@ -217,6 +221,23 @@ private fun UnitSettings() {
     val s = app.settings
     Choices("Distances", Units.entries.map { it to it.label }, s.units) { s.units = it }
     Choices("Directions", DirectionStyle.entries.map { it to it.label }, s.directionStyle) { s.directionStyle = it }
+}
+
+@Composable
+private fun AccuracySettings() {
+    val app = LocalContext.current.applicationContext as TrekerApp
+    val s = app.settings
+    val fix = app.location.fix.value
+    Text(if (fix == null) "No GPS position yet." else "Right now, GPS is accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), s.units)}.",
+        fontSize = 17.sp)
+    Choices("Required GPS accuracy", GpsAccuracy.entries.map { it to it.label }, s.gpsAccuracy) { s.gpsAccuracy = it }
+    Text("Treker only names streets, intersections, addresses and places, and only says you've arrived, when your GPS position is " +
+        "at least this precise. When it isn't, Treker says GPS signal weak and waits rather than guess. Out in the open, most phones " +
+        "manage about 15 feet; between tall buildings, under trees or indoors, GPS can't reach 30 feet, and Treker will tell you so.",
+        fontSize = 16.sp)
+    Choices("Say you've arrived when walking within", ArrivalDistance.entries.map { it to it.label }, s.arrivalDistance) { s.arrivalDistance = it }
+    Text("In the last 150 feet of a walk, Treker counts down the distance and says which way the destination is, " +
+        "right up to the door, not just the end of the street.", fontSize = 16.sp)
 }
 
 @Composable

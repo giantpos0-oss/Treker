@@ -22,10 +22,8 @@ import kotlinx.coroutines.launch
  * zip code, street, intersections you're approaching, places you pass and your direction.
  */
 class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope) {
-    companion object {
-        /** Beyond this GPS error, in meters, street, intersection, address and place announcements wait. */
-        const val MAX_ACCURACY = 25f
-    }
+    /** Beyond this GPS error, in meters, street, intersection, address and place announcements wait. */
+    private val MAX_ACCURACY: Float get() = app.settings.gpsAccuracy.meters
 
     private val settings get() = app.settings
 
@@ -193,7 +191,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         placesJob = scope.launch {
             val places = try { Offline.pois(fix.pos, 60.0) } catch (e: Exception) { return@launch }
             val now = System.currentTimeMillis()
-            val close = places.map { it to Geo.distance(fix.pos, it.pos) }.filter { it.second < 35 }.sortedBy { it.second }
+            val close = places.map { it to Geo.distance(fix.pos, it.pos) }.filter { it.second < 25 }.sortedBy { it.second }
             for ((p, d) in close.take(2)) {
                 val key = p.placeId ?: p.name
                 if (now - (announcedPlaces[key] ?: 0L) < 15 * 60_000) continue
@@ -233,7 +231,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         listOfNotNull(a?.neighborhood, a?.city, a?.county, a?.state).forEach { parts.add(it) }
         a?.zip?.let { parts.add("zip code ${spellZip(it)}") }
         a?.country?.let { parts.add(it) }
-        if (fix.accuracy > 25) parts.add("GPS accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.units)}")
+        if (fix.accuracy > MAX_ACCURACY) parts.add("GPS is weak, accurate only to about ${Geo.distanceWords(fix.accuracy.toDouble(), settings.units)}")
         return if (parts.isEmpty()) "Looking up where you are." else parts.joinToString(", ") + "."
     }
 
