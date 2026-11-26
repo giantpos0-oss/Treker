@@ -44,7 +44,6 @@ fun ExploreScreen() {
         val pointing = app.whatsAround.pointingAt.value
         if (pointing.isNotBlank()) Text(pointing, fontSize = 18.sp, modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
 
-        BigButton(if (s.liveExploration) "Pause" else "Resume") { app.togglePause() }
         Text(app.explorer.status.value, fontSize = 16.sp, modifier = Modifier.padding(vertical = 4.dp))
         val fix = app.location.fix.value
         if (fix != null && !Offline.hasMapFor(fix.pos)) {
@@ -52,7 +51,6 @@ fun ExploreScreen() {
             BigButton("Get the offline map") { AppNav.tab.value = Tab.HELP }
         }
 
-        BigButton("Where am I") { app.speaker.say(app.explorer.whereAmI(), true) }
         BigButton("Nearest intersection") { scope.launch { app.speaker.say(app.explorer.nearestIntersection(), true) } }
         BigButton("Places nearby") {
             scope.launch {

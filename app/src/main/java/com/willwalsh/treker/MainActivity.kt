@@ -17,7 +17,15 @@ import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.TopAppBar
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
@@ -91,9 +99,26 @@ private fun PermissionScreen(onAsk: () -> Unit) {
 }
 
 @Composable
+@OptIn(ExperimentalMaterial3Api::class)
 private fun AppRoot() {
     val tab = AppNav.tab.value
+    val app = LocalContext.current.applicationContext as TrekerApp
     Scaffold(
+        topBar = {
+            TopAppBar(
+                navigationIcon = {
+                    if (AppNav.canGoUp) IconButton(onClick = { AppNav.up() }) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Navigate up")
+                    }
+                },
+                title = { Text(AppNav.title, modifier = Modifier.semantics { heading() }) },
+                actions = {
+                    TextButton(onClick = { app.togglePause() }) {
+                        Text(if (app.settings.liveExploration) "Pause" else "Resume", fontSize = 18.sp)
+                    }
+                },
+            )
+        },
         bottomBar = {
             NavigationBar {
                 for (t in Tab.entries) {

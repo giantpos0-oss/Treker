@@ -45,37 +45,21 @@ import com.willwalsh.treker.Verbosity
 import com.willwalsh.treker.data.Geo
 import java.util.Locale
 
-private const val REPO = "https://github.com/giantpos0-oss/Treker/blob/main/docs"
+private typealias Page = SettingsPage
 
-/** The pages of the Help and settings tab. */
-private enum class Page(val title: String) {
-    MAIN("Help and settings"),
-    SPEECH("Speech"),
-    ANNOUNCEMENTS("Announcements and verbosity"),
-    ROUTES("Routes"),
-    UNITS("Units and directions"),
-    ACCURACY("GPS accuracy"),
-    GESTURES("Shake and What's Around"),
-    MAPS("Offline maps"),
-    REPORTS("Map reports and fixes"),
-    GUIDE("User guide"),
-}
+private const val REPO = "https://github.com/giantpos0-oss/Treker/blob/main/docs"
 
 @Composable
 fun HelpSettingsScreen() {
     val context = LocalContext.current
-    var page by rememberSaveable { mutableStateOf(Page.MAIN) }
-    BackHandler(enabled = page != Page.MAIN) { page = Page.MAIN }
+    val page = AppNav.settingsPage.value
+    BackHandler(enabled = page != Page.MAIN) { AppNav.up() }
 
     fun open(url: String) = runCatching {
         context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
     }
 
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 16.dp)) {
-        if (page != Page.MAIN) {
-            BigButton("Back to Help and settings") { page = Page.MAIN }
-            Heading(page.title)
-        }
         when (page) {
             Page.MAIN -> {
                 BigButton("Open user guide in browser") { open("$REPO/user-guide.md") }
@@ -83,10 +67,10 @@ fun HelpSettingsScreen() {
                 Text("Treker version ${BuildConfig.VERSION_NAME}", fontSize = 16.sp, modifier = Modifier.padding(vertical = 4.dp))
                 Heading("Settings")
                 for (p in listOf(Page.SPEECH, Page.ANNOUNCEMENTS, Page.ROUTES, Page.UNITS, Page.ACCURACY, Page.GESTURES, Page.MAPS, Page.REPORTS)) {
-                    BigButton(p.title) { page = p }
+                    BigButton(p.title) { AppNav.settingsPage.value = p }
                 }
                 Heading("Help")
-                BigButton(Page.GUIDE.title) { page = Page.GUIDE }
+                BigButton(Page.GUIDE.title) { AppNav.settingsPage.value = Page.GUIDE }
                 Heading("Map data")
                 Text("Map data © OpenStreetMap contributors, available under the Open Database License. " +
                     "Routes by Valhalla. Public transit trips by Transitous, transitous.org, from open timetable data. " +
@@ -178,7 +162,8 @@ private fun AnnouncementSettings() {
     val app = LocalContext.current.applicationContext as TrekerApp
     val s = app.settings
     fun opts(brief: String, normal: String, detailed: String) = listOf(
-        Verbosity.BRIEF to "Brief: $brief", Verbosity.NORMAL to "Normal: $normal", Verbosity.DETAILED to "Detailed: $detailed")
+        Verbosity.BRIEF to "Brief, for example: $brief", Verbosity.NORMAL to "Normal, for example: $normal",
+        Verbosity.DETAILED to "Detailed, for example: $detailed")
 
     Text("Choose what live exploration announces, and how much it says for each.", fontSize = 16.sp)
     Choices("Streets", opts("Main Street", "On Main Street", "On Main Street, residential street"), s.streetVerbosity) { s.streetVerbosity = it }
@@ -190,11 +175,9 @@ private fun AnnouncementSettings() {
         s.areaVerbosity) { s.areaVerbosity = it }
 
     SwitchRow("Announce when the GPS signal turns weak or good again", s.announceGps) { s.announceGps = it }
-    Text("Announce while moving", fontSize = 19.sp, modifier = Modifier.padding(top = 14.dp, bottom = 4.dp))
-    for (item in LiveItem.entries) SwitchRow(item.label, s.isOn(item)) { s.set(item, it) }
-
     Text("Announce while guiding", fontSize = 19.sp, modifier = Modifier.padding(top = 14.dp, bottom = 4.dp))
-    Text("Used instead of the ones above while route guidance is running.", fontSize = 16.sp)
+    Text("Used instead of the Explore tab's switches while route guidance is running. They're also on the Routes tab during guidance; " +
+        "they're here so you can set them before you start a route.", fontSize = 16.sp)
     for (item in LiveItem.entries) SwitchRow(item.label, s.isOn(item, guiding = true)) { s.set(item, it, guiding = true) }
 }
 

@@ -1,5 +1,14 @@
 # Treker release notes
 
+## Version 0.1.3
+
+- New: a bar across the top of every screen. It names the screen you're on and has Pause, or Resume when paused, at the top right. On a settings page, Navigate up is at the top left and takes you back to Help and settings.
+- Changed: Pause has moved from the Explore and Routes tabs to that top bar, so it's on every screen.
+- Removed: the Where am I button. Shake the phone instead, or move through the switches on the Explore tab, which show the latest city, state, street and so on.
+- Removed: Announce while moving from the Announcements and verbosity settings, because it's on the Explore tab. Announce while guiding stays there, so you can set it before starting a route.
+- Changed: verbosity options now read like Brief, for example: Main Street.
+- Removed: the Back to Help and settings button, replaced by Navigate up.
+
 ## Version 0.1.2
 
 - New: one Pause button pauses live exploration and route guidance together, and Resume brings both back. It's near the top of the Explore tab, on the Routes tab while guidance is running, and in the Treker notification as Pause or resume. While paused, guidance keeps following you silently; when you resume, Treker says the current instruction.

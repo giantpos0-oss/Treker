@@ -12,17 +12,22 @@ The first time you open Treker, it asks for permission to use your location and 
 
 Next, download the map for your area. Go to the Help and settings tab, find Offline maps, and choose the map that says it covers where you are. Maps are large, so use Wi-Fi. You can keep using your phone while it downloads, and Treker says when the map is ready. If there's no map for where you are, the Explore tab says so and has a Get the offline map button.
 
-Live exploration starts straight away and keeps running when the screen is off or you're in another app. While it runs, Android shows a Treker notification with two buttons: Pause or resume, which does the same as the Pause button, and Stop Treker, which stops GPS, guidance and live exploration until you open Treker again. Both work from the notification shade without opening Treker.
+Live exploration starts straight away and keeps running when the screen is off or you're in another app. While it runs, Android shows a Treker notification with two buttons: Pause or resume, which does the same as Pause at the top of the screen, and Stop Treker, which stops GPS, guidance and live exploration until you open Treker again. Both work from the notification shade without opening Treker.
+
+# The top of every screen
+
+Across the top of every screen is a bar. It names the screen you're on and, at the top right, has Pause. Pause pauses live exploration and route guidance together, and Treker stops talking straight away. The button then says Resume. GPS keeps running while paused, so the other features still work and guidance keeps following you; when you resume during guidance, Treker says the current instruction.
+
+On a settings page, the top bar also has Navigate up at the top left, which takes you back to Help and settings. Your phone's back gesture does the same.
 
 # Explore tab
 
 What's Around is the first thing on the Explore tab. Switch it on, then point the top of your phone in any direction, holding it flat or upright. Treker says the place or intersection in that direction and how far away it is. Turn slowly to hear everything around you. Switch it off when you're done, because it uses the compass all the time it's on.
 
-Live exploration announces information as you move, all the time. Below What's Around is the Pause button: it pauses live exploration and route guidance together, and Treker stops talking straight away. The button then says Resume. GPS keeps running while paused, so the other features still work and guidance keeps following you; when you resume during guidance, Treker says the current instruction.
+Live exploration announces information as you move, all the time, unless you've pressed Pause.
 
 Below that is a line saying how good the GPS signal is.
 
-- Where am I says everything Treker knows about where you are, whatever announcements you have switched on.
 - Nearest intersection says the closest intersection, its direction and distance.
 - Places nearby lists the places around you, nearest first. Each place has actions, described under Place actions below.
 
@@ -134,11 +139,11 @@ Your fixes are listed on the Help and settings tab, under Map reports and fixes,
 
 # Shake for Where am I
 
-Shake your phone firmly, twice, to hear Where am I: your street, nearest address, city and zip code. It works with the screen off and while you're in another app, as long as live exploration is running. You can switch it off, or change how hard you have to shake, in Help and settings, under Shake and What's Around.
+Shake your phone firmly, twice, to hear Where am I: your street, nearest address, city and zip code. You can also find each of these, at any time, by moving through the switches under Announce while moving on the Explore tab. It works with the screen off and while you're in another app, as long as live exploration is running. You can switch it off, or change how hard you have to shake, in Help and settings, under Shake and What's Around.
 
 # Help and settings tab
 
-At the top are Open user guide in browser and Open release notes in browser. Below them, each group of settings has its own button. Each group opens on the same tab, with a Back to Help and settings button at the top; your phone's back gesture works too.
+At the top are Open user guide in browser and Open release notes in browser. Below them, each group of settings has its own button. Each group opens on its own page; Navigate up, at the top left of the screen, or your phone's back gesture, takes you back.
 
 Speech: Treker's own voice, which speaks live exploration, What's Around and guidance. It's separate from your screen reader's voice.
 
@@ -147,7 +152,7 @@ Speech: Treker's own voice, which speaks live exploration, What's Around and gui
 - Speech rate, pitch and volume.
 - Test speech plays a sample announcement.
 
-Announcements and verbosity: how much live exploration says, set separately for streets, intersections, places you pass, and the country, state, county, city and zip code. Each has three levels, Brief, Normal and Detailed, and each option includes an example of what you'll hear. Detailed intersections say what kind of intersection it is, like a T intersection or a 4-way intersection, and where it is, like ahead. Detailed streets say what kind of street it is, like a residential street or a major road. Announce intersections ahead sets how early intersections are announced, from about 50 feet to about 200 feet. The switches for each kind of announcement are here too, both sets: Announce while moving, as on the Explore tab, and Announce while guiding, as on the Routes tab.
+Announcements and verbosity: how much live exploration says, set separately for streets, intersections, places you pass, and the country, state, county, city and zip code. Each has three levels, and each option says what you'll hear, for example: Brief, for example: Main Street. Detailed intersections say what kind of intersection it is, like a T intersection or a 4-way intersection, and where it is, like ahead. Detailed streets say what kind of street it is, like a residential street or a major road. Announce intersections ahead sets how early intersections are announced, from about 50 feet to about 200 feet. Announce while guiding is here too, so you can choose what's announced during route guidance before you start a route. The switches for while you're exploring are on the Explore tab, under Announce while moving.
 
 Routes:
 
