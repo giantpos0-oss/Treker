@@ -49,6 +49,8 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
     private var placesJob: Job? = null
     private var lastPlacesAt: LatLon? = null
     private var noMapWarned = false
+    /** Where am I has been said once since Treker started. */
+    private var startSummaryDone = false
 
     /** Starts weak: nothing is named until GPS has proved itself precise. */
     private var gpsWeak = true
@@ -115,12 +117,22 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         val now = System.currentTimeMillis()
         val moved = lastLookupAt?.let { Geo.distance(it, fix.pos) } ?: Double.MAX_VALUE
         if (lookupJob?.isActive == true) return
-        if (moved < 30 && now - lastLookupTime < 120_000) return
+        // Until the start-up summary has been said, keep trying every few seconds.
+        if (moved < 30 && now - lastLookupTime < 120_000 && startSummaryDone) return
         if (now - lastLookupTime < 4_000) return
         lastLookupAt = fix.pos; lastLookupTime = now
         lookupJob = scope.launch {
             val info = runCatching { Offline.areaInfo(fix.pos, StreetMap.around(fix.pos), fix.course) }.getOrNull() ?: return@launch
             area.value = info
+            // When Treker starts, say where you are once, whatever the switches say; the switches then
+            // decide what's announced as things change.
+            if (!startSummaryDone && fix.accuracy <= 30f) {
+                startSummaryDone = true
+                announcedArea = info
+                if (info.street != null && street.value == null) street.value = info.street
+                say(whereAmI())
+                return@launch
+            }
             val old = announcedArea
             announcedArea = info
             val parts = ArrayList<String>()
@@ -136,7 +148,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
             if (on(LiveItem.ZIP) && !info.zip.isNullOrBlank() && info.zip != old?.zip)
                 parts.add(if (v == Verbosity.BRIEF) spellZip(info.zip) else "zip code ${spellZip(info.zip)}")
             if (on(LiveItem.ADDRESS) && !gpsWeak && !info.address.isNullOrBlank() && info.address != old?.address)
-                parts.add(if (v == Verbosity.BRIEF) info.address else "near ${info.address}")
+                parts.add(addressWords(info, v == Verbosity.BRIEF))
             if (parts.isNotEmpty()) say(parts.joinToString(", "))
 
         }
@@ -223,6 +235,16 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
     /** Whether [item] is switched on, using the route guidance switches while guidance is running. */
     private fun on(item: LiveItem) = settings.isOn(item, app.guidance.active.value)
 
+    /** "near 1303 Emily Morgan Circle", or "about 1303 ..." when the number is worked out from the street's ranges. */
+    private fun addressWords(a: AreaInfo, brief: Boolean): String {
+        val addr = a.address ?: return ""
+        return when {
+            a.addressEstimated -> "about $addr"
+            brief -> addr
+            else -> "near $addr"
+        }
+    }
+
     /** Joins the parts of an announcement with commas, skipping any that are empty. */
     private fun words(vararg parts: String) = parts.filter { it.isNotBlank() }.joinToString(", ")
 
@@ -286,7 +308,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         val a = area.value
         val parts = ArrayList<String>()
         street.value?.let { parts.add("On $it") }
-        a?.address?.let { parts.add("near $it") }
+        if (a?.address != null) parts.add(addressWords(a, false))
         listOfNotNull(a?.neighborhood, a?.city, a?.county, a?.state).forEach { parts.add(it) }
         a?.zip?.let { parts.add("zip code ${spellZip(it)}") }
         a?.country?.let { parts.add(it) }

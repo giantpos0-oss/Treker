@@ -99,7 +99,7 @@ fun liveValue(app: TrekerApp, item: LiveItem): String? {
         // Digits spaced out so it's read as a zip code, not a number.
         LiveItem.ZIP -> a?.zip?.toCharArray()?.joinToString(" ")
         LiveItem.STREET -> app.explorer.street.value
-        LiveItem.ADDRESS -> a?.address
+        LiveItem.ADDRESS -> a?.address?.let { if (a.addressEstimated) "about $it" else it }
         LiveItem.INTERSECTIONS -> app.explorer.lastIntersection.value
         LiveItem.PLACES -> app.explorer.lastPlace.value
     }

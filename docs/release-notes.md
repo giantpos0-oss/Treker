@@ -1,5 +1,12 @@
 # Treker release notes
 
+## Version 0.1.7
+
+- New: when Treker starts, it says where you are once, as soon as it knows: street, address, city, zip code and so on, whatever your announcement switches are set to.
+- Fixed: Pause no longer stays on after Treker is closed and opened again. Treker always starts unpaused.
+- New: city names outside city limits. Many neighborhoods, like Pecan Grove, aren't inside any city's limits, but their mail goes to a city, like Richmond. Treker now uses that mailing city when you're outside city limits.
+- New: house numbers almost everywhere. Where the map has no house mapped near you, Treker works out your house number from the Census Bureau's house number ranges for your street and which side of it you're on, and says it with about, for example about 1303 Emily Morgan Circle. This needs the updated maps, which are being rebuilt; download your map again once it shows a new build date.
+
 ## Version 0.1.6
 
 - Fixed: street names stopped being announced indoors and in other places where GPS is a little rough. Now Treker names your street whenever it's clearly the nearest one, even with GPS up to about 100 feet off, and still says nothing when two streets are too close to call.

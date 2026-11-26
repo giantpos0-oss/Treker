@@ -335,6 +335,96 @@ def census_areas(path, bbox, level):
     print(f"  {n} {level} areas from {path}", file=sys.stderr)
 
 
+# Census street names are abbreviated ("Emily Morgan Cir"); people say them in full.
+SUFFIXES = {"aly": "Alley", "ave": "Avenue", "blvd": "Boulevard", "byp": "Bypass", "cir": "Circle", "ct": "Court",
+            "cv": "Cove", "dr": "Drive", "expy": "Expressway", "fwy": "Freeway", "hwy": "Highway", "ln": "Lane",
+            "loop": "Loop", "pass": "Pass", "path": "Path", "pkwy": "Parkway", "pl": "Place", "plz": "Plaza",
+            "pt": "Point", "rd": "Road", "rdg": "Ridge", "row": "Row", "run": "Run", "sq": "Square", "st": "Street",
+            "ter": "Terrace", "trce": "Trace", "trl": "Trail", "tpke": "Turnpike", "vw": "View", "walk": "Walk",
+            "way": "Way", "xing": "Crossing", "crk": "Creek", "holw": "Hollow", "hts": "Heights", "spgs": "Springs",
+            "grv": "Grove", "mdw": "Meadow", "mdws": "Meadows", "pk": "Park", "frk": "Fork", "cyn": "Canyon"}
+DIRECTIONS = {"n": "North", "s": "South", "e": "East", "w": "West", "ne": "Northeast", "nw": "Northwest",
+              "se": "Southeast", "sw": "Southwest"}
+
+
+def full_street_name(name):
+    words = name.split()
+    if not words:
+        return name
+    out = list(words)
+    if len(out) > 1 and out[0].lower() in DIRECTIONS:
+        out[0] = DIRECTIONS[out[0].lower()]
+    if len(out) > 1 and out[-1].lower() in DIRECTIONS:
+        out[-1] = DIRECTIONS[out[-1].lower()]
+        if len(out) > 2 and out[-2].lower() in SUFFIXES:
+            out[-2] = SUFFIXES[out[-2].lower()]
+    elif len(out) > 1 and out[-1].lower() in SUFFIXES:
+        out[-1] = SUFFIXES[out[-1].lower()]
+    return " ".join(out)
+
+
+def num(v):
+    try:
+        return int(str(v).strip())
+    except (TypeError, ValueError):
+        return None
+
+
+def load_ranges(db, paths, bbox):
+    """House number ranges along each side of every street, from the Census Bureau (public domain).
+    Treker estimates your house number from where you are along the street."""
+    import shapefile  # pyshp
+    rows, cells, rid = [], [], 0
+    for path in paths:
+        try:
+            reader = shapefile.Reader(path)
+        except Exception as e:
+            print(f"  skipping {path}: {e}", file=sys.stderr)
+            continue
+        fields = [f[0] for f in reader.fields[1:]]
+        ix = {k: fields.index(k) for k in ("FULLNAME", "LFROMHN", "LTOHN", "RFROMHN", "RTOHN", "ZIPL", "ZIPR") if k in fields}
+        if "FULLNAME" not in ix:
+            continue
+        for sr in reader.iterShapeRecords():
+            rec = sr.record
+            name = rec[ix["FULLNAME"]]
+            lf, lt = num(rec[ix["LFROMHN"]]), num(rec[ix["LTOHN"]])
+            rf, rt = num(rec[ix["RFROMHN"]]), num(rec[ix["RTOHN"]])
+            if not name or (lf is None and rf is None):
+                continue
+            pts = sr.shape.points
+            if len(pts) < 2:
+                continue
+            rid += 1
+            blob = bytearray()
+            cs = set()
+            for lon, lat in pts:
+                blob += struct.pack("<ii", round(lat * 1e6), round(lon * 1e6))
+                cs.add(cell_of(lat, lon))
+            rows.append((rid, full_street_name(name), lf, lt, rf, rt,
+                         rec[ix["ZIPL"]] if "ZIPL" in ix else "", rec[ix["ZIPR"]] if "ZIPR" in ix else "", bytes(blob)))
+            cells.extend((c, rid) for c in cs)
+            if len(rows) > 20000:
+                db.executemany("INSERT INTO ranges VALUES (?,?,?,?,?,?,?,?,?)", rows)
+                db.executemany("INSERT INTO range_cells VALUES (?,?)", cells)
+                rows.clear(); cells.clear()
+    db.executemany("INSERT INTO ranges VALUES (?,?,?,?,?,?,?,?,?)", rows)
+    db.executemany("INSERT INTO range_cells VALUES (?,?)", cells)
+    print(f"  {rid} house number ranges", file=sys.stderr)
+
+
+def build_zip_cities(db):
+    """The city each zip code's mail goes to, for places outside any city's limits (like Pecan Grove,
+    whose mail says Richmond): the city most addresses in that zip code give."""
+    rows = db.execute("""SELECT postcode, city, COUNT(*) n FROM addresses
+                         WHERE postcode != '' AND city != '' GROUP BY postcode, city ORDER BY postcode, n DESC""").fetchall()
+    best = {}
+    for z, c, n in rows:
+        best.setdefault(z[:5], c)
+    db.executemany("INSERT OR REPLACE INTO zip_city VALUES (?,?)", best.items())
+    print(f"  {len(best)} zip codes with a mailing city", file=sys.stderr)
+
+
 def check(db):
     """Stops the build if the map is clearly broken, so a bad map never reaches anyone's phone."""
     q = lambda sql: db.execute(sql).fetchone()[0]
@@ -356,6 +446,10 @@ CREATE TABLE street_cells (cell INTEGER, street INTEGER);
 CREATE TABLE junctions (id INTEGER PRIMARY KEY, lat REAL, lon REAL, names TEXT, cell INTEGER);
 CREATE TABLE pois (id INTEGER PRIMARY KEY, name TEXT, kind TEXT, lat REAL, lon REAL, cell INTEGER, address TEXT, osm TEXT);
 CREATE TABLE addresses (number TEXT, street TEXT, city TEXT, postcode TEXT, lat REAL, lon REAL, cell INTEGER);
+CREATE TABLE ranges (id INTEGER PRIMARY KEY, street TEXT, lfrom INTEGER, lto INTEGER, rfrom INTEGER, rto INTEGER,
+    zipl TEXT, zipr TEXT, geom BLOB);
+CREATE TABLE range_cells (cell INTEGER, range INTEGER);
+CREATE TABLE zip_city (zip TEXT PRIMARY KEY, city TEXT);
 CREATE TABLE areas (id INTEGER PRIMARY KEY, level TEXT, name TEXT,
     minlat REAL, minlon REAL, maxlat REAL, maxlon REAL, geom BLOB);
 """
@@ -369,6 +463,7 @@ CREATE INDEX addresses_cell ON addresses(cell);
 CREATE INDEX addresses_street ON addresses(street COLLATE NOCASE);
 CREATE INDEX streets_name ON streets(name COLLATE NOCASE);
 CREATE INDEX areas_box ON areas(minlat, maxlat);
+CREATE INDEX range_cells_cell ON range_cells(cell);
 """
 
 
@@ -382,6 +477,7 @@ def main():
     ap.add_argument("--census", nargs="*", default=[],
                     help="Census shapefiles for state, county and city areas (tl_*_state, tl_*_county, tl_*_place)")
     ap.add_argument("--country", help="Country name for the whole region, e.g. United States")
+    ap.add_argument("--addrfeat", nargs="*", default=[], help="Census ADDRFEAT shapefiles: house number ranges along streets")
     args = ap.parse_args()
 
     print("Pass 1: finding junctions", file=sys.stderr)
@@ -426,6 +522,10 @@ def main():
     if args.country:
         p2.areas = [a for a in p2.areas if a[0] != "country"]
         p2.areas.append(("country", args.country, box(b[1] - 0.5, b[0] - 0.5, b[3] + 0.5, b[2] + 0.5)))
+
+    if args.addrfeat:
+        load_ranges(db, args.addrfeat, b)
+    build_zip_cities(db)
 
     arows = []
     for i, (level, name, geom) in enumerate(p2.areas):

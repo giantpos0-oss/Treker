@@ -75,16 +75,21 @@ object Offline {
         val areas = runCatching { r.areasAt(p) }.getOrDefault(emptyMap())
         val street = (streetsHere ?: runCatching { r.streetArea(p, 150.0) }.getOrNull())
             ?.nearestStreet(p, course)?.takeIf { it.second < 30 }?.first?.name
-        val addr = runCatching { r.nearestAddress(p, street = street) }.getOrNull()
+        // A mapped house close by wins; otherwise the house number is worked out from the street's ranges.
+        val addr = runCatching { r.nearestAddress(p, maxMeters = 25.0, street = street) }.getOrNull()
+        val est = if (addr == null) runCatching { r.estimateAddress(p, street) }.getOrNull() else null
+        val zip = areas["zip"] ?: addr?.third ?: est?.zip
         AreaInfo(
             country = areas["country"],
             state = areas["state"],
             county = areas["county"],
-            city = areas["city"] ?: addr?.second,
+            // Outside any city's limits, the city your mail goes to, like Richmond for Pecan Grove.
+            city = areas["city"] ?: addr?.second ?: zip?.let { runCatching { r.mailingCity(it) }.getOrNull() },
             neighborhood = areas["neighborhood"],
-            zip = areas["zip"] ?: addr?.third,
+            zip = zip,
             street = street,
-            address = addr?.first,
+            address = addr?.first ?: est?.let { "${it.number} ${it.street}" },
+            addressEstimated = addr == null && est != null,
         )
     }
 }

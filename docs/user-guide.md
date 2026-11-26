@@ -12,11 +12,13 @@ The first time you open Treker, it asks for permission to use your location and 
 
 Next, download the map for your area. Go to the Help and settings tab, find Offline maps, and choose the map that says it covers where you are. Maps are large, so use Wi-Fi. You can keep using your phone while it downloads, and Treker says when the map is ready. If there's no map for where you are, the Explore tab says so and has a Get the offline map button.
 
+When Treker starts, it says where you are once, as soon as it knows: your street, address, city, zip code and so on, whatever your announcement switches are set to. After that, the switches decide what's announced as things change.
+
 Live exploration starts straight away and keeps running when the screen is off or you're in another app. While it runs, Android shows a Treker notification with two buttons: Pause or resume, which does the same as Pause at the top of the screen, and Stop Treker, which stops GPS, guidance and live exploration until you open Treker again. Both work from the notification shade without opening Treker.
 
 # The top of every screen
 
-Across the top of every screen is a bar. It names the screen you're on and, at the top right, has Pause. Pause pauses live exploration and route guidance together, and Treker stops talking straight away. The button then says Resume. GPS keeps running while paused, so the other features still work and guidance keeps following you; when you resume during guidance, Treker says the current instruction.
+Across the top of every screen is a bar. It names the screen you're on and, at the top right, has Pause. Pause pauses live exploration and route guidance together, and Treker stops talking straight away. The button then says Resume. Treker always starts unpaused, even if it was paused when you closed it. GPS keeps running while paused, so the other features still work and guidance keeps following you; when you resume during guidance, Treker says the current instruction.
 
 On a settings page, the top bar also has Navigate up at the top left, which takes you back to Help and settings. Your phone's back gesture does the same.
 
@@ -114,7 +116,8 @@ Treker is built so it doesn't tell you something wrong with confidence.
 - A trail or footpath, such as one behind your house, is only named when you're on it; otherwise the street nearby wins.
 - A divided road, with separate lanes each way, is announced as one intersection, not two.
 - Zip codes come from the U.S. Census Bureau's zip code areas, so they're right even where no one has mapped addresses.
-- The nearest street address is taken from the street you're on.
+- The nearest street address is taken from the street you're on. Where the map has no house mapped close by, Treker works out your house number from the Census Bureau's house number ranges for your street and which side of it you're on, and says about in front of it, for example about 1303 Emily Morgan Circle, because it's an estimate.
+- Outside city limits, as in many neighborhoods, Treker gives the city your mail goes to, like Richmond.
 - Every new version of Treker is checked by automatic tests of distances, directions, which street you're on, intersections, turn announcements and noticing when you leave a route. Every map is checked before it's published, so a broken map never reaches your phone.
 
 The map itself is OpenStreetMap, kept up to date by volunteers, so it can still be wrong or out of date in places. When it is, please report it.
@@ -192,6 +195,6 @@ User guide: this guide.
 
 # Where the information comes from
 
-Map data © OpenStreetMap contributors, available under the Open Database License. Streets, intersections, places, addresses and the areas you're in all come from OpenStreetMap. Routes are made on your phone by the Valhalla routing engine. Public transit trips come from Transitous, a free community service using open timetable data; its data sources are listed at transitous.org/sources, and the Help and settings tab has a button that opens that page.
+Map data © OpenStreetMap contributors, available under the Open Database License. Streets, intersections, places and addresses come from OpenStreetMap. State, county, city and zip code areas, and the house number ranges used to work out addresses, come from the U.S. Census Bureau. Routes are made on your phone by the Valhalla routing engine. Public transit trips come from Transitous, a free community service using open timetable data; its data sources are listed at transitous.org/sources, and the Help and settings tab has a button that opens that page.
 
 Because the information comes from OpenStreetMap, which volunteers keep up to date, some places or addresses may be missing, especially outside cities.

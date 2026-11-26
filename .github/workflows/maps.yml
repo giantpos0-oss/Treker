@@ -96,7 +96,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: census
-          key: census-tl_2025-${{ matrix.region.fips }}
+          key: census-tl_2025-addr-${{ matrix.region.fips }}
 
       - name: Download Census areas
         env:
@@ -112,6 +112,23 @@ jobs:
           get tl_2025_us_state STATE
           get tl_2025_us_county COUNTY
           get "tl_2025_${FIPS}_place" PLACE || echo "No Census places for this region"
+          # House number ranges along every street, one file per county.
+          pip install pyshp >/dev/null
+          mkdir -p census/addr
+          for g in $(python3 -c "
+          import shapefile
+          r = shapefile.Reader('census/tl_2025_us_county.shp')
+          f = [x[0] for x in r.fields[1:]]
+          for rec in r.iterRecords():
+              if rec[f.index('STATEFP')] == '$FIPS': print(rec[f.index('GEOID')])
+          "); do
+            [ -f "census/addr/tl_2025_${g}_addrfeat.shp" ] && continue
+            curl -fsL --retry 6 --retry-delay 20 --retry-all-errors -o "census/addr/$g.zip" \
+              "https://www2.census.gov/geo/tiger/TIGER2025/ADDRFEAT/tl_2025_${g}_addrfeat.zip" \
+              && unzip -o -q "census/addr/$g.zip" -d census/addr && rm -f "census/addr/$g.zip" \
+              || echo "No address ranges for county $g"
+          done
+          ls census/addr/*.shp | wc -l
           ls -la census
 
       - name: Build street database
@@ -119,7 +136,8 @@ jobs:
           pip install osmium shapely numpy pyshp
           python3 tools/build_region.py work/region.osm.pbf "work/$ID.db" --id "$ID" --name "$NAME" --country "United States" \
             --zcta census/tl_2025_us_zcta520.shp \
-            --census census/tl_2025_us_state.shp census/tl_2025_us_county.shp $(ls census/tl_2025_${{ matrix.region.fips }}_place.shp 2>/dev/null)
+            --census census/tl_2025_us_state.shp census/tl_2025_us_county.shp $(ls census/tl_2025_${{ matrix.region.fips }}_place.shp 2>/dev/null) \
+            --addrfeat census/addr/*.shp
           gzip -6 -c "work/$ID.db" > "work/$ID.db.gz"
 
       - name: Build routing tiles with Valhalla

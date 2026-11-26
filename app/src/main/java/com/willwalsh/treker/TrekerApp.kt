@@ -46,6 +46,8 @@ class TrekerApp : Application() {
     override fun onCreate() {
         super.onCreate()
         settings = Settings(this)
+        // Pause lasts until you resume or Treker restarts; it's never left on by accident.
+        settings.liveExploration = true
         Offline.init(this)
         Corrections.init(this)
         Reports.init(this)

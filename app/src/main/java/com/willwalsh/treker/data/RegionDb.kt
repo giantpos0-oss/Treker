@@ -29,6 +29,8 @@ data class Place(
 data class AreaInfo(
     val country: String?, val state: String?, val county: String?, val city: String?,
     val neighborhood: String?, val zip: String?, val street: String?, val address: String?,
+    /** True when [address] is estimated from the street's house number ranges, not a mapped house. */
+    val addressEstimated: Boolean = false,
 )
 
 /**
@@ -133,6 +135,70 @@ class RegionDb(val file: File) {
         }
         return best
     }
+
+    private fun hasTable(name: String) = runCatching {
+        db.rawQuery("SELECT 1 FROM sqlite_master WHERE type='table' AND name=?", arrayOf(name)).use { it.moveToFirst() }
+    }.getOrDefault(false)
+    private val hasRanges = hasTable("ranges")
+    private val hasZipCity = hasTable("zip_city")
+
+    /** The city a zip code's mail goes to, for places outside any city's limits. */
+    fun mailingCity(zip: String): String? = if (!hasZipCity) null else
+        db.rawQuery("SELECT city FROM zip_city WHERE zip = ?", arrayOf(zip.take(5))).use { if (it.moveToFirst()) it.getString(0) else null }
+
+    /** A house number worked out from the Census address ranges: the number, street and zip code. */
+    data class Estimate(val number: Int, val street: String, val zip: String?)
+
+    /**
+     * Your house number, estimated from where you are along the street and which side of it you're on,
+     * using the Census Bureau's house number ranges. [street] is the street Treker thinks you're on;
+     * a range on that street wins over a slightly closer one on another.
+     */
+    fun estimateAddress(p: LatLon, street: String?, maxMeters: Double = 60.0): Estimate? {
+        if (!hasRanges) return null
+        var best: Estimate? = null
+        var bestScore = Double.MAX_VALUE
+        db.rawQuery("SELECT street, lfrom, lto, rfrom, rto, zipl, zipr, geom FROM ranges WHERE id IN " +
+            "(SELECT DISTINCT range FROM range_cells WHERE cell IN (${cellList(p, maxMeters)}))", null).use { c ->
+            while (c.moveToNext()) {
+                val b = ByteBuffer.wrap(c.getBlob(7)).order(ByteOrder.LITTLE_ENDIAN)
+                val pts = ArrayList<LatLon>()
+                while (b.remaining() >= 8) pts.add(LatLon(b.int / 1e6, b.int / 1e6))
+                if (pts.size < 2) continue
+                // Nearest segment, and how far along the whole line that is.
+                var total = 0.0
+                val lengths = DoubleArray(pts.size - 1) { i -> Geo.distance(pts[i], pts[i + 1]).also { total += it } }
+                var segBest = -1; var dBest = Double.MAX_VALUE
+                for (i in 0 until pts.size - 1) {
+                    val d = StreetArea.distanceToSegment(p, pts[i], pts[i + 1])
+                    if (d < dBest) { dBest = d; segBest = i }
+                }
+                if (dBest > maxMeters || total <= 0) continue
+                val name = c.getString(0) ?: continue
+                val score = dBest - (if (street != null && name.equals(street, ignoreCase = true)) 25.0 else 0.0)
+                if (score >= bestScore) continue
+                val a = pts[segBest]; val bb = pts[segBest + 1]
+                val t = StreetArea.projectT(p, a, bb)
+                val along = (lengths.take(segBest).sum() + t * lengths[segBest]) / total
+                // Which side: left or right of the line's direction (flat-earth cross product).
+                val k = Math.cos(Math.toRadians(p.lat))
+                val cross = (bb.lon - a.lon) * k * (p.lat - a.lat) - (bb.lat - a.lat) * (p.lon - a.lon) * k
+                val left = cross > 0
+                var from = if (left) c.getIntOrNull(1) else c.getIntOrNull(3)
+                var to = if (left) c.getIntOrNull(2) else c.getIntOrNull(4)
+                if (from == null || to == null) { from = c.getIntOrNull(if (left) 3 else 1); to = c.getIntOrNull(if (left) 4 else 2) }
+                if (from == null || to == null) continue
+                var n = Math.round(from + along * (to - from)).toInt()
+                if ((n - from) % 2 != 0) n += if (to >= from) 1 else -1 // same odd or even as that side
+                val zip = c.getString(if (left) 5 else 6)?.ifBlank { null }
+                bestScore = score
+                best = Estimate(n, name, zip)
+            }
+        }
+        return best
+    }
+
+    private fun android.database.Cursor.getIntOrNull(i: Int): Int? = if (isNull(i)) null else getInt(i)
 
     /** Country, state, county, city, neighborhood and zip areas containing [p], smallest wins per level. */
     fun areasAt(p: LatLon): Map<String, String> {
