@@ -129,7 +129,7 @@ class RegionDb(val file: File) {
                 if (street != null && c.getString(1).equals(street, ignoreCase = true)) d -= 20
                 if (d < bestD) {
                     bestD = d
-                    best = Triple("${c.getString(0)} ${c.getString(1)}", c.getString(2)?.ifBlank { null }, c.getString(3)?.ifBlank { null })
+                    best = Triple("${c.getString(0)} ${tidyStreet(c.getString(1))}", c.getString(2)?.ifBlank { null }, c.getString(3)?.ifBlank { null })
                 }
             }
         }
@@ -305,5 +305,17 @@ class RegionDb(val file: File) {
             }
         }
         return out
+    }
+}
+
+private val KEEP_CAPS = setOf("FM", "RM", "CR", "SH", "US", "IH", "NE", "NW", "SE", "SW", "II", "III", "IV", "PR", "SR")
+
+/** Address files sometimes shout ("EMILY MORGAN Circle"); a screen reader would spell that out, so say it normally. */
+fun tidyStreet(name: String): String {
+    val words = name.trim().split(Regex("\\s+"))
+    val shouting = words.count { w -> w.length > 1 && w.any { it.isLetter() } && w == w.uppercase() }
+    if (shouting * 2 < words.size) return name
+    return words.joinToString(" ") { w ->
+        if (w.any { it.isDigit() } || w.uppercase() in KEEP_CAPS) w else w.lowercase().replaceFirstChar { it.uppercase() }
     }
 }

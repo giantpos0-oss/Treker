@@ -416,9 +416,15 @@ def load_ranges(db, paths, bbox):
 def tidy_street(name):
     """Address files often shout ("EMILY MORGAN CIR"); say it the normal way, in full."""
     name = " ".join(name.split())
-    if name.isupper() or name.islower():
-        name = " ".join(w if any(ch.isdigit() for ch in w) else w.capitalize() for w in name.split())
+    words = name.split()
+    shouting = sum(1 for w in words if w.isupper() and len(w) > 1)
+    if name.islower() or shouting * 2 >= len(words):
+        # Mixed files like "EMILY MORGAN Circle" count as shouting too. Road prefixes keep their capitals.
+        name = " ".join(w if any(ch.isdigit() for ch in w) or w.upper() in KEEP_CAPS else w.capitalize() for w in words)
     return full_street_name(name)
+
+
+KEEP_CAPS = {"FM", "RM", "CR", "SH", "US", "IH", "NE", "NW", "SE", "SW", "II", "III", "IV", "PR", "SR", "HWY"}
 
 
 def load_points(db, path):

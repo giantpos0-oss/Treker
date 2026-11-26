@@ -1,5 +1,9 @@
 # Treker release notes
 
+## Version 0.1.10
+
+- Fixed: exact house numbers from the new address points were sometimes in capitals, like EMILY MORGAN Circle, which a screen reader could spell out. They're now said normally: 1303 Emily Morgan Circle. The Texas map now has these address points; update it in Offline maps to get your exact house number.
+
 ## Version 0.1.9
 
 - New Active route tab. While you're being guided, it replaces the Explore tab at the bottom left. It shows where you're going, the next instruction, the distance remaining and traveled, and updates by itself as you move. Its buttons are Repeat instruction, Where am I, Recalculate route, Step-by-step directions, Announcements while guiding, Report a route problem and Stop guidance. Announcements while guiding moved here from settings.
