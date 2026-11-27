@@ -94,7 +94,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun PermissionScreen(onAsk: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(24.dp)) {
-        Text("BkindExplorer needs your location to tell you where you are and guide you.", fontSize = 20.sp)
+        Text("BlindExplorer needs your location to tell you where you are and guide you.", fontSize = 20.sp)
         BigButton("Allow location") { onAsk() }
     }
 }

@@ -1,8 +1,8 @@
-# BkindExplorer release notes
+# BlindExplorer release notes
 
 ## Version 0.2.0
 
-- Treker is now called BkindExplorer. The new name is on your home screen, in the notification, and in everything the app says. It installs over Treker, and your maps, favorites and settings stay as they were.
+- Treker is now called BlindExplorer. The new name is on your home screen, in the notification, and in everything the app says. It installs over Treker, and your maps, favorites and settings stay as they were.
 
 ## Version 0.1.11
 

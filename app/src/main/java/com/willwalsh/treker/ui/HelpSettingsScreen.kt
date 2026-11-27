@@ -64,7 +64,7 @@ fun HelpSettingsScreen() {
             Page.MAIN -> {
                 BigButton("Open user guide in browser") { open("$REPO/user-guide.md") }
                 BigButton("Open release notes in browser") { open("$REPO/release-notes.md") }
-                Text("BkindExplorer version ${BuildConfig.VERSION_NAME}", fontSize = 16.sp, modifier = Modifier.padding(vertical = 4.dp))
+                Text("BlindExplorer version ${BuildConfig.VERSION_NAME}", fontSize = 16.sp, modifier = Modifier.padding(vertical = 4.dp))
                 Heading("Settings")
                 for (p in listOf(Page.SPEECH, Page.ANNOUNCEMENTS, Page.ROUTES, Page.UNITS, Page.ACCURACY, Page.GESTURES, Page.MAPS, Page.REPORTS)) {
                     BigButton(p.title) { AppNav.openPage(p) }
@@ -149,9 +149,9 @@ private fun SpeechSettings() {
     var allLanguages by remember { mutableStateOf(false) }
 
     if (pageShowing) {
-        Text("BkindExplorer's own voice speaks live exploration, What's Around and guidance, so it works with the screen off. " +
+        Text("BlindExplorer's own voice speaks live exploration, What's Around and guidance, so it works with the screen off. " +
             "It's separate from your screen reader's voice.", fontSize = 16.sp)
-        BigButton("Test speech") { sp.say("This is BkindExplorer. Approaching Main Street and Oak Avenue, 100 feet.", true) }
+        BigButton("Test speech") { sp.say("This is BlindExplorer. Approaching Main Street and Oak Avenue, 100 feet.", true) }
     }
 
     Choices("Speech engine", listOf("" to "Phone's default engine") + sp.engines.toList(), s.speechEngine) {
@@ -243,13 +243,13 @@ private fun AccuracySettings() {
     if (pageShowing) Text(if (fix == null) "No GPS position yet." else "Right now, GPS is accurate to about ${Geo.distanceWords(fix.accuracy.toDouble(), s.units)}.",
         fontSize = 17.sp)
     Choices("Required GPS accuracy", GpsAccuracy.entries.map { it to it.label }, s.gpsAccuracy) { s.gpsAccuracy = it }
-    if (pageShowing) Text("BkindExplorer only announces intersections, addresses and places you pass, and only says you've arrived, when your GPS position is " +
+    if (pageShowing) Text("BlindExplorer only announces intersections, addresses and places you pass, and only says you've arrived, when your GPS position is " +
         "at least this precise. Street names can be given with GPS up to about 100 feet off, but only when one street is clearly the nearest. " +
-        "When GPS isn't good enough, BkindExplorer says nothing rather than guess. Out in the open, most phones " +
-        "manage about 15 feet; between tall buildings, under trees or indoors, GPS can't reach 30 feet, and BkindExplorer will tell you so.",
+        "When GPS isn't good enough, BlindExplorer says nothing rather than guess. Out in the open, most phones " +
+        "manage about 15 feet; between tall buildings, under trees or indoors, GPS can't reach 30 feet, and BlindExplorer will tell you so.",
         fontSize = 16.sp)
     Choices("Say you've arrived when walking within", ArrivalDistance.entries.map { it to it.label }, s.arrivalDistance) { s.arrivalDistance = it }
-    if (pageShowing) Text("In the last 150 feet of a walk, BkindExplorer counts down the distance and says which way the destination is, " +
+    if (pageShowing) Text("In the last 150 feet of a walk, BlindExplorer counts down the distance and says which way the destination is, " +
         "right up to the door, not just the end of the street.", fontSize = 16.sp)
 }
 

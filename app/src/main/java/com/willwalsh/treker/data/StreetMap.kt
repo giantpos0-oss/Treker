@@ -50,7 +50,7 @@ class StreetArea(val center: LatLon, val radius: Double, val ways: List<Way>, va
     /**
      * Intersections as a person would count them. Where a divided road crosses another street,
      * the map has two or more junction points a few meters apart; they're merged into one so
-     * BkindExplorer doesn't announce the same intersection twice.
+     * BlindExplorer doesn't announce the same intersection twice.
      */
     val clusters: List<Intersection>
     private val clusterOfNode = HashMap<Long, Int>()
@@ -159,7 +159,7 @@ class StreetArea(val center: LatLon, val radius: Double, val ways: List<Way>, va
     /**
      * The named street you're most likely on, and how far away it is, in meters. When you're
      * moving, a street running the same way you're going wins over a cross street that happens to
-     * be a little closer, so standing at a corner doesn't make BkindExplorer name the wrong street.
+     * be a little closer, so standing at a corner doesn't make BlindExplorer name the wrong street.
      */
     fun nearestStreet(p: LatLon, course: Double? = null): Pair<Way, Double>? =
         streetCandidates(p, course).firstOrNull()?.let { it.way to it.distance }

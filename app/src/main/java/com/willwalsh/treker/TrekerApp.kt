@@ -46,7 +46,7 @@ class TrekerApp : Application() {
     override fun onCreate() {
         super.onCreate()
         settings = Settings(this)
-        // Pause lasts until you resume or BkindExplorer restarts; it's never left on by accident.
+        // Pause lasts until you resume or BlindExplorer restarts; it's never left on by accident.
         settings.liveExploration = true
         Offline.init(this)
         Corrections.init(this)
@@ -60,7 +60,7 @@ class TrekerApp : Application() {
         walker = VirtualWalker(this)
         guidance = Guidance(this, scope)
         com.willwalsh.treker.ui.AppNav.guiding = { guidance.active.value }
-        // Reports made without internet go out the next time BkindExplorer starts.
+        // Reports made without internet go out the next time BlindExplorer starts.
         if (Reports.waiting > 0) scope.launch { Reports.sendWaiting() }
         // Keep the maps current: rebuilt maps fix mistakes and add exact house numbers.
         scope.launch {

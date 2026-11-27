@@ -328,7 +328,7 @@ class Guidance(private val app: TrekerApp, private val scope: CoroutineScope) {
     private var precisionWarned = false
 
     /**
-     * Walking within about 150 feet of the destination: BkindExplorer says how far it is and which way,
+     * Walking within about 150 feet of the destination: BlindExplorer says how far it is and which way,
      * and only says you've arrived once you're within the arrival distance with GPS precise enough
      * to be sure.
      */

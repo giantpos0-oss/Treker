@@ -1,4 +1,4 @@
-# Builds BkindExplorer's offline maps from OpenStreetMap and publishes them on the "maps" release.
+# Builds BlindExplorer's offline maps from OpenStreetMap and publishes them on the "maps" release.
 #
 # From the Actions tab, run "Build offline maps":
 #   - leave "only" empty to build every U.S. region in tools/us-regions.json (all 50 states,
@@ -7,7 +7,7 @@
 # It also runs by itself on the 1st of each month so maps stay current.
 #
 # Each region is a street database (tools/build_region.py) plus Valhalla routing tiles.
-# The last job rebuilds regions.json, the catalog BkindExplorer reads, from every published region.
+# The last job rebuilds regions.json, the catalog BlindExplorer reads, from every published region.
 name: Build offline maps
 
 on:
@@ -59,7 +59,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release view maps >/dev/null 2>&1 || gh release create maps --title "Offline maps" --latest=false \
-            --notes "Offline maps for BkindExplorer, built from OpenStreetMap (© OpenStreetMap contributors, ODbL). Download them from inside BkindExplorer, in Help and settings, under Offline maps."
+            --notes "Offline maps for BlindExplorer, built from OpenStreetMap (© OpenStreetMap contributors, ODbL). Download them from inside BlindExplorer, in Help and settings, under Offline maps."
 
   build:
     needs: plan
@@ -231,4 +231,4 @@ jobs:
           print(f"{len(regions)} regions in the catalog")
           EOF
           gh release upload maps regions.json -R "${{ github.repository }}" --clobber
-          echo "::notice title=Maps catalog::$(python3 -c 'import json;print(len(json.load(open("regions.json"))["regions"]))') regions available in BkindExplorer."
+          echo "::notice title=Maps catalog::$(python3 -c 'import json;print(len(json.load(open("regions.json"))["regions"]))') regions available in BlindExplorer."

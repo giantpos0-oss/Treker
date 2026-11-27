@@ -152,7 +152,7 @@ class RegionDb(val file: File) {
 
     /**
      * Your house number, estimated from where you are along the street and which side of it you're on,
-     * using the Census Bureau's house number ranges. [street] is the street BkindExplorer thinks you're on;
+     * using the Census Bureau's house number ranges. [street] is the street BlindExplorer thinks you're on;
      * a range on that street wins over a slightly closer one on another.
      */
     fun estimateAddress(p: LatLon, street: String?, maxMeters: Double = 60.0): Estimate? {
