@@ -1,5 +1,9 @@
 # BlindExplorer release notes
 
+## Version 0.2.1
+
+- The project's home on GitHub is now github.com/giantpos0-oss/BlindExplorer. The app's help links, map downloads and updates use the new address. Old links still work.
+
 ## Version 0.2.0
 
 - Treker is now called BlindExplorer. The new name is on your home screen, in the notification, and in everything the app says. It installs over Treker, and your maps, favorites and settings stay as they were.

@@ -27,7 +27,7 @@ data class RegionInfo(
  * "Build offline map" workflow and published on its "maps" release.
  */
 object Regions {
-    const val CATALOG = "https://github.com/giantpos0-oss/Treker/releases/download/maps/regions.json"
+    const val CATALOG = "https://github.com/giantpos0-oss/BlindExplorer/releases/download/maps/regions.json"
 
     val catalog = mutableStateOf<List<RegionInfo>>(emptyList())
     val catalogStatus = mutableStateOf("")
@@ -140,7 +140,7 @@ object Regions {
             val c = (u.openConnection() as HttpURLConnection).apply {
                 instanceFollowRedirects = false
                 connectTimeout = 20_000; readTimeout = 60_000
-                setRequestProperty("User-Agent", "BlindExplorer (Android; https://github.com/giantpos0-oss/Treker)")
+                setRequestProperty("User-Agent", "BlindExplorer (Android; https://github.com/giantpos0-oss/BlindExplorer)")
             }
             val code = c.responseCode
             if (code in 300..399) { u = URL(u, c.getHeaderField("Location")); c.disconnect(); return@repeat }

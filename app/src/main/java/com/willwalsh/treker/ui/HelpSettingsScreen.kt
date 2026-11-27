@@ -47,7 +47,7 @@ import java.util.Locale
 
 private typealias Page = SettingsPage
 
-private const val REPO = "https://github.com/giantpos0-oss/Treker/blob/main/docs"
+private const val REPO = "https://github.com/giantpos0-oss/BlindExplorer/blob/main/docs"
 
 @Composable
 fun HelpSettingsScreen() {
