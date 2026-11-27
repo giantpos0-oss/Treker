@@ -87,7 +87,7 @@ class LocationHub(context: Context) {
         lastRawTime = maxOf(lastRawTime, loc.time)
         val (pos, _) = filter.update(LatLon(loc.latitude, loc.longitude), loc.accuracy, loc.speed, loc.time)
         // The accuracy reported is the GPS's own, not the smoothed estimate: smoothing steadies the
-        // position but mustn't make Treker more confident than the satellites justify.
+        // position but mustn't make BkindExplorer more confident than the satellites justify.
         _fix.value = Fix(pos, loc.accuracy, loc.speed,
             if (loc.hasBearing() && loc.speed > 0.6f) loc.bearing.toDouble() else prev?.course?.takeIf { loc.speed > 0.6f },
             loc.time)

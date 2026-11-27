@@ -115,7 +115,7 @@ object Transit {
         val c = (URL(url).openConnection() as HttpURLConnection).apply {
             connectTimeout = 15_000; readTimeout = 30_000
             // Transitous asks every app to identify itself with a way to reach the developer.
-            setRequestProperty("User-Agent", "Treker/${BuildConfig.VERSION_NAME} (Android; https://github.com/giantpos0-oss/Treker)")
+            setRequestProperty("User-Agent", "BkindExplorer/${BuildConfig.VERSION_NAME} (Android; https://github.com/giantpos0-oss/Treker)")
         }
         val code = c.responseCode
         if (code == 404) throw NotFound()

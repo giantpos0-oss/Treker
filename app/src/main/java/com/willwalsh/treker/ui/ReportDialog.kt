@@ -35,7 +35,7 @@ import com.willwalsh.treker.data.Report
 import com.willwalsh.treker.data.Reports
 import kotlinx.coroutines.launch
 
-/** Everything a report starts with: where, which place, and what Treker said there. */
+/** Everything a report starts with: where, which place, and what BkindExplorer said there. */
 data class ReportRequest(val pos: LatLon, val place: Place? = null, val heard: String? = null, val problem: Problem? = null)
 
 /**
@@ -88,8 +88,8 @@ fun ReportDialog(req: ReportRequest, onClose: () -> Unit) {
         app.scope.launch {
             val ok = Reports.submit(report)
             app.speaker.say(
-                if (ok) "Report sent to OpenStreetMap. Local mappers can now fix it, and the fix reaches Treker with the next monthly map update."
-                else "Report saved. It couldn't be sent right now, so Treker will send it later.",
+                if (ok) "Report sent to OpenStreetMap. Local mappers can now fix it, and the fix reaches BkindExplorer with the next monthly map update."
+                else "Report saved. It couldn't be sent right now, so BkindExplorer will send it later.",
                 true,
             )
         }

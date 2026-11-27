@@ -76,9 +76,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           ver=$(grep -m1 'versionName' app/build.gradle.kts | sed 's/.*"\(.*\)".*/\1/')
-          cp "$(ls app/build/outputs/apk/release/*.apk | head -1)" Treker.apk
+          cp "$(ls app/build/outputs/apk/release/*.apk | head -1)" BkindExplorer.apk
+          # The old file name stays too, so links to Treker.apk keep working.
+          cp BkindExplorer.apk Treker.apk
           if gh release view "v$ver" >/dev/null 2>&1; then
-            gh release upload "v$ver" Treker.apk --clobber
+            gh release upload "v$ver" BkindExplorer.apk Treker.apk --clobber
           else
-            gh release create "v$ver" Treker.apk --title "Treker $ver" --notes "Install Treker.apk on your Android phone. What is new: https://github.com/${{ github.repository }}/blob/main/docs/release-notes.md" --latest
+            gh release create "v$ver" BkindExplorer.apk Treker.apk --title "BkindExplorer $ver" --notes "Install BkindExplorer.apk on your Android phone. What is new: https://github.com/${{ github.repository }}/blob/main/docs/release-notes.md" --latest
           fi

@@ -10,7 +10,7 @@ import android.view.View
 import android.view.accessibility.AccessibilityManager
 
 /**
- * Treker's own voice. Live exploration, What's Around and guidance speak through this so they
+ * BkindExplorer's own voice. Live exploration, What's Around and guidance speak through this so they
  * work with the screen off and in other apps. It uses the navigation audio channel, so music and
  * podcasts dip while it talks instead of stopping.
  */
@@ -130,7 +130,7 @@ class Speaker(context: Context, private val settings: com.willwalsh.treker.Setti
     fun shutdown() { tts.stop(); tts.shutdown() }
 }
 
-/** Short on-screen feedback: through the screen reader when one is on, otherwise Treker's voice. */
+/** Short on-screen feedback: through the screen reader when one is on, otherwise BkindExplorer's voice. */
 class Announcer(context: Context, private val speaker: Speaker) {
     private val am = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
     val screenReaderOn: Boolean get() = am.isEnabled && am.isTouchExplorationEnabled

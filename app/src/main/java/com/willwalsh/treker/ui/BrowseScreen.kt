@@ -81,7 +81,7 @@ fun BrowseScreen() {
 
 /**
  * The swipe area for map browsing. On Android 14 and later it asks the screen reader to pass
- * touches straight through, so swipes reach Treker instead of moving screen reader focus.
+ * touches straight through, so swipes reach BkindExplorer instead of moving screen reader focus.
  * The same moves are also screen reader actions on the area, as a backup.
  */
 @SuppressLint("ViewConstructor", "ClickableViewAccessibility")

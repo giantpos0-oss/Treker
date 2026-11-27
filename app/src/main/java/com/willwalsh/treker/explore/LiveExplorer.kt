@@ -27,7 +27,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
 
     private val settings get() = app.settings
 
-    /** What Treker last said, newest first, shown on the Explore tab. */
+    /** What BkindExplorer last said, newest first, shown on the Explore tab. */
     val history = mutableStateListOf<String>()
     /** Where you are, for the "Where am I" button. */
     val area = mutableStateOf<AreaInfo?>(null)
@@ -49,7 +49,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
     private var placesJob: Job? = null
     private var lastPlacesAt: LatLon? = null
     private var noMapWarned = false
-    /** Where am I has been said once since Treker started. */
+    /** Where am I has been said once since BkindExplorer started. */
     private var startSummaryDone = false
 
     /** Starts weak: nothing is named until GPS has proved itself precise. */
@@ -125,7 +125,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         lookupJob = scope.launch {
             val info = runCatching { Offline.areaInfo(fix.pos, StreetMap.around(fix.pos), fix.course) }.getOrNull() ?: return@launch
             area.value = info
-            // When Treker starts, say where you are once, whatever the switches say; the switches then
+            // When BkindExplorer starts, say where you are once, whatever the switches say; the switches then
             // decide what's announced as things change.
             if (!startSummaryDone && fix.accuracy <= 30f) {
                 startSummaryDone = true
@@ -164,7 +164,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
     /**
      * Which street you're on, judged fairly for how good GPS is right now. With a precise fix, the
      * nearest street. With a rougher fix (up to about 100 feet), only when the nearest street is clearly
-     * closer than any other, by at least half the GPS error. Otherwise Treker says nothing.
+     * closer than any other, by at least half the GPS error. Otherwise BkindExplorer says nothing.
      */
     private fun confidentStreet(map: com.willwalsh.treker.data.StreetArea, fix: Fix): com.willwalsh.treker.data.StreetArea.Candidate? {
         val acc = fix.accuracy.toDouble()
@@ -187,7 +187,7 @@ class LiveExplorer(private val app: TrekerApp, private val scope: CoroutineScope
         if (!on(LiveItem.STREET) && !on(LiveItem.INTERSECTIONS)) return
         streetJob = scope.launch {
             val map = StreetMap.around(fix.pos) ?: return@launch
-            // With a weak GPS signal, Treker stays quiet about streets and intersections rather
+            // With a weak GPS signal, BkindExplorer stays quiet about streets and intersections rather
             // than risk naming the wrong one.
             if (on(LiveItem.STREET)) {
                 val near = confidentStreet(map, fix)

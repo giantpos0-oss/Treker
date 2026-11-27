@@ -1,4 +1,4 @@
-# Working on Treker
+# Working on BkindExplorer
 
 ## Keep the user guide and release notes current (every change)
 
@@ -23,7 +23,7 @@ links are stripped by the in-app reader, so don't rely on them for meaning.
 
 ## Map data
 
-Treker is fully OpenStreetMap and offline. tools/build_region.py builds a region's street
+BkindExplorer is fully OpenStreetMap and offline. tools/build_region.py builds a region's street
 database; .github/workflows/maps.yml builds every region in tools/us-regions.json (or one, via
 the "only" input) plus Valhalla routing tiles, publishes them on the "maps" release, and rebuilds
 regions.json, the catalog the app reads. Runs monthly. License: GPL-3.0. Public transit uses Transitous (online,

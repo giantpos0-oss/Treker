@@ -26,7 +26,7 @@ enum class TravelModeSetting(val label: String) {
     MOTORIZED("Always motorized"),
 }
 
-/** How much Treker says for one kind of announcement. */
+/** How much BkindExplorer says for one kind of announcement. */
 enum class Verbosity(val label: String) { BRIEF("Brief"), NORMAL("Normal"), DETAILED("Detailed") }
 
 /** Driving routes: quickest or shortest. */
@@ -36,8 +36,8 @@ enum class RouteType(val label: String) { FASTEST("Fastest"), SHORTEST("Shortest
 enum class ShakeStrength(val label: String, val g: Float) { LIGHT("Light", 2.0f), MEDIUM("Medium", 2.6f), FIRM("Firm", 3.3f) }
 
 /**
- * How precise your GPS position must be before Treker names streets, intersections, addresses and
- * places, or says you've arrived. Worse than this, Treker says the signal is weak and waits.
+ * How precise your GPS position must be before BkindExplorer names streets, intersections, addresses and
+ * places, or says you've arrived. Worse than this, BkindExplorer says the signal is weak and waits.
  */
 enum class GpsAccuracy(val label: String, val meters: Float) {
     TIGHT("About 30 feet or 9 meters, most accurate", 9.2f),
@@ -45,7 +45,7 @@ enum class GpsAccuracy(val label: String, val meters: Float) {
     LOOSE("About 80 feet or 25 meters, works in more places", 25f),
 }
 
-/** How close to a walking destination Treker says you've arrived. */
+/** How close to a walking destination BkindExplorer says you've arrived. */
 enum class ArrivalDistance(val label: String, val meters: Double) {
     CLOSE("About 15 feet or 5 meters", 4.6),
     NORMAL("About 30 feet or 9 meters", 9.2),

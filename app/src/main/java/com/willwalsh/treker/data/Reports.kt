@@ -31,7 +31,7 @@ data class Report(
     val details: String,
     val placeName: String?,
     val placeKey: String?,
-    /** What Treker said or showed here, so a mapper knows what the person heard. */
+    /** What BkindExplorer said or showed here, so a mapper knows what the person heard. */
     val heard: String?,
     val created: Long = System.currentTimeMillis(),
     var noteId: Long? = null,
@@ -51,7 +51,7 @@ data class Report(
 
 /**
  * Map problem reports. Each becomes a public OpenStreetMap note at the spot, which local
- * volunteer mappers see and fix; the fix reaches Treker with the next monthly map update.
+ * volunteer mappers see and fix; the fix reaches BkindExplorer with the next monthly map update.
  * Reports made without internet, or that OpenStreetMap doesn't accept yet, wait and are retried.
  */
 object Reports {
@@ -93,7 +93,7 @@ object Reports {
                 requestMethod = "POST"; doOutput = true
                 connectTimeout = 15_000; readTimeout = 20_000
                 setRequestProperty("Content-Type", "application/x-www-form-urlencoded")
-                setRequestProperty("User-Agent", "Treker/${BuildConfig.VERSION_NAME} (Android GPS for blind people)")
+                setRequestProperty("User-Agent", "BkindExplorer/${BuildConfig.VERSION_NAME} (Android GPS for blind people)")
             }
             c.outputStream.use { it.write(body.toByteArray()) }
             if (c.responseCode !in 200..299) return@runCatching false
@@ -116,8 +116,8 @@ object Reports {
             r.placeKey?.removePrefix("osm:")?.takeIf { r.placeKey.startsWith("osm:") }?.let { append(" (OSM ").append(it).append(")") }
         }
         if (!r.heard.isNullOrBlank()) append("\n\nThe app said: ").append(r.heard.take(300))
-        append("\n\nReported by a blind person using Treker, a GPS app for blind people that uses OpenStreetMap ")
-        append("to announce streets, intersections and places. Accurate data here helps them travel safely. #Treker")
+        append("\n\nReported by a blind person using BkindExplorer, a GPS app for blind people that uses OpenStreetMap ")
+        append("to announce streets, intersections and places. Accurate data here helps them travel safely. #BkindExplorer")
     }
 
     fun noteLink(r: Report) = r.noteId?.let { "https://www.openstreetmap.org/note/$it" }

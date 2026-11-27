@@ -23,7 +23,7 @@ data class RegionInfo(
 }
 
 /**
- * The offline map catalog and downloads. Maps are built from OpenStreetMap by the Treker repo's
+ * The offline map catalog and downloads. Maps are built from OpenStreetMap by the BkindExplorer repo's
  * "Build offline map" workflow and published on its "maps" release.
  */
 object Regions {
@@ -72,17 +72,17 @@ object Regions {
     fun hasUpdate(r: RegionInfo): Boolean = isInstalled(r.id) && (installedBuilt(r.id) ?: "") < r.built
 
     /**
-     * When Treker starts: any installed map with a newer build is updated by itself on Wi-Fi.
-     * On mobile data, Treker only says an update is ready, since maps are large.
+     * When BkindExplorer starts: any installed map with a newer build is updated by itself on Wi-Fi.
+     * On mobile data, BkindExplorer only says an update is ready, since maps are large.
      */
     suspend fun updateInstalled(unmetered: Boolean, say: (String) -> Unit) {
         val newer = runCatching { loadCatalog() }.getOrDefault(emptyList()).filter { hasUpdate(it) }
         for (r in newer) {
             if (!unmetered) { say("A newer ${r.name} map is ready. Update it on Wi-Fi, or in Help and settings, Offline maps."); continue }
-            say("Updating the ${r.name} map. You can keep using Treker.")
+            say("Updating the ${r.name} map. You can keep using BkindExplorer.")
             runCatching { download(r) }
                 .onSuccess { say("The ${r.name} map is updated.") }
-                .onFailure { say("The ${r.name} map didn't update. Treker will try again next time it starts.") }
+                .onFailure { say("The ${r.name} map didn't update. BkindExplorer will try again next time it starts.") }
         }
     }
 
@@ -140,7 +140,7 @@ object Regions {
             val c = (u.openConnection() as HttpURLConnection).apply {
                 instanceFollowRedirects = false
                 connectTimeout = 20_000; readTimeout = 60_000
-                setRequestProperty("User-Agent", "Treker (Android; https://github.com/giantpos0-oss/Treker)")
+                setRequestProperty("User-Agent", "BkindExplorer (Android; https://github.com/giantpos0-oss/Treker)")
             }
             val code = c.responseCode
             if (code in 300..399) { u = URL(u, c.getHeaderField("Location")); c.disconnect(); return@repeat }

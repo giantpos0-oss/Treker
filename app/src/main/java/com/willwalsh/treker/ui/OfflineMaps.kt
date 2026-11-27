@@ -27,7 +27,7 @@ fun OfflineMapsSection() {
     LaunchedEffect(Unit) { if (Regions.catalog.value.isEmpty()) Regions.loadCatalog() }
 
     val installed = remember(version) { Offline.installed }
-    if (installed.isEmpty()) Text("No maps downloaded yet. Treker needs the map for your area to work.", fontSize = 16.sp)
+    if (installed.isEmpty()) Text("No maps downloaded yet. BkindExplorer needs the map for your area to work.", fontSize = 16.sp)
     for (r in installed) {
         BigButton("Delete ${r.name} map") {
             app.scope.launch {
@@ -60,7 +60,7 @@ private fun RegionButton(r: RegionInfo, coversYou: Boolean, onDone: () -> Unit) 
     }
     BigButton(label, Modifier.padding(vertical = 2.dp)) {
         if (p != null) return@BigButton
-        app.speaker.say("Downloading the ${r.name} map. You can keep using Treker.", true)
+        app.speaker.say("Downloading the ${r.name} map. You can keep using BkindExplorer.", true)
         app.scope.launch {
             try {
                 Regions.download(r)

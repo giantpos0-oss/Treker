@@ -8,7 +8,7 @@ import java.io.File
 class NoMapForHere : Exception("No offline map covers this spot. Download the map for this area in Help and settings, under Offline maps.")
 
 /**
- * Treker's offline map: every downloaded region, opened once and kept open.
+ * BkindExplorer's offline map: every downloaded region, opened once and kept open.
  * All lookups run off the main thread.
  */
 object Offline {

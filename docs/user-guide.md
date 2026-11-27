@@ -1,30 +1,30 @@
-# Treker user guide
+# BkindExplorer user guide
 
-Treker is a GPS app for blind people on Android. It tells you where you are as you move, lets you point your phone to hear what's around you, lets you walk the streets virtually, and guides you turn by turn walking, driving or by public transit.
+BkindExplorer is a GPS app for blind people on Android. It tells you where you are as you move, lets you point your phone to hear what's around you, lets you walk the streets virtually, and guides you turn by turn walking, driving or by public transit.
 
-Treker works offline. Its maps come from OpenStreetMap and are downloaded to your phone, one region at a time, so live exploration, What's Around, map browsing, search and walking and driving guidance all work without an internet connection. Only public transit trips need the internet.
+BkindExplorer works offline. Its maps come from OpenStreetMap and are downloaded to your phone, one region at a time, so live exploration, What's Around, map browsing, search and walking and driving guidance all work without an internet connection. Only public transit trips need the internet.
 
 There are five tabs across the bottom of the screen, from left to right: Explore, Map browsing, Routes, Favorites, and Help and settings.
 
 # Getting started
 
-The first time you open Treker, it asks for permission to use your location and to show notifications. Allow both.
+The first time you open BkindExplorer, it asks for permission to use your location and to show notifications. Allow both.
 
-Next, download the map for your area. Go to the Help and settings tab, find Offline maps, and choose the map that says it covers where you are. Maps are large, so use Wi-Fi. You can keep using your phone while it downloads, and Treker says when the map is ready. If there's no map for where you are, the Explore tab says so and has a Get the offline map button.
+Next, download the map for your area. Go to the Help and settings tab, find Offline maps, and choose the map that says it covers where you are. Maps are large, so use Wi-Fi. You can keep using your phone while it downloads, and BkindExplorer says when the map is ready. If there's no map for where you are, the Explore tab says so and has a Get the offline map button.
 
-When Treker starts, it says where you are once, as soon as it knows: your street, address, city, zip code and so on, whatever your announcement switches are set to. After that, the switches decide what's announced as things change.
+When BkindExplorer starts, it says where you are once, as soon as it knows: your street, address, city, zip code and so on, whatever your announcement switches are set to. After that, the switches decide what's announced as things change.
 
-Live exploration starts straight away and keeps running when the screen is off or you're in another app. While it runs, Android shows a Treker notification with two buttons: Pause or resume, which does the same as Pause at the top of the screen, and Stop Treker, which stops GPS, guidance and live exploration until you open Treker again. Both work from the notification shade without opening Treker. Closing Treker from your phone's recent apps list stops it completely too, the same as Stop Treker.
+Live exploration starts straight away and keeps running when the screen is off or you're in another app. While it runs, Android shows a BkindExplorer notification with two buttons: Pause or resume, which does the same as Pause at the top of the screen, and Stop BkindExplorer, which stops GPS, guidance and live exploration until you open BkindExplorer again. Both work from the notification shade without opening BkindExplorer. Closing BkindExplorer from your phone's recent apps list stops it completely too, the same as Stop BkindExplorer.
 
 # The top of every screen
 
-Across the top of every screen is a bar. It names the screen you're on and, at the top right, has Pause. Pause pauses live exploration and route guidance together, and Treker stops talking straight away. The button then says Resume. Treker always starts unpaused, even if it was paused when you closed it. GPS keeps running while paused, so the other features still work and guidance keeps following you; when you resume during guidance, Treker says the current instruction.
+Across the top of every screen is a bar. It names the screen you're on and, at the top right, has Pause. Pause pauses live exploration and route guidance together, and BkindExplorer stops talking straight away. The button then says Resume. BkindExplorer always starts unpaused, even if it was paused when you closed it. GPS keeps running while paused, so the other features still work and guidance keeps following you; when you resume during guidance, BkindExplorer says the current instruction.
 
 On a settings page, the top bar also has Navigate up at the top left, which takes you back to Help and settings. Your phone's back gesture does the same.
 
 # Explore tab
 
-What's Around is the first thing on the Explore tab. Switch it on, then point the top of your phone in any direction, holding it flat or upright. Treker says the place or intersection in that direction and how far away it is. Turn slowly to hear everything around you. Switch it off when you're done, because it uses the compass all the time it's on.
+What's Around is the first thing on the Explore tab. Switch it on, then point the top of your phone in any direction, holding it flat or upright. BkindExplorer says the place or intersection in that direction and how far away it is. Turn slowly to hear everything around you. Switch it off when you're done, because it uses the compass all the time it's on.
 
 Live exploration announces information as you move, all the time, unless you've pressed Pause.
 
@@ -58,9 +58,9 @@ Approaching intersections are announced when an intersection is ahead of you in 
 - Walking: a short beep, then the kind of intersection and both streets, for example: 3-way intersection. Main Street crossing Oak Avenue.
 - In a vehicle: only the cross street you're passing, for example: Oak Avenue.
 
-Like StellarTrek, Treker works out whether you're walking or in a vehicle from your speed. Faster than about 15 miles per hour for two minutes means you're in a vehicle; slower than about 7 miles per hour for two minutes means you're walking. You can fix it to always pedestrian or always motorized in Help and settings, under Announcements and verbosity, then Travel mode. While you're being guided, the travel mode of the route is used.
+Like StellarTrek, BkindExplorer works out whether you're walking or in a vehicle from your speed. Faster than about 15 miles per hour for two minutes means you're in a vehicle; slower than about 7 miles per hour for two minutes means you're walking. You can fix it to always pedestrian or always motorized in Help and settings, under Announcements and verbosity, then Travel mode. While you're being guided, the travel mode of the route is used.
 
-Recent announcements, at the bottom of the Explore tab, lists the last things Treker said, newest first.
+Recent announcements, at the bottom of the Explore tab, lists the last things BkindExplorer said, newest first.
 
 # Map browsing tab
 
@@ -74,9 +74,9 @@ Touch the large map browsing area, then:
 - Swipe right to turn onto the street to your right.
 - Tap to hear where you are.
 
-After each move Treker says where you are, the street you're on, and what the next intersection is and how far.
+After each move BkindExplorer says where you are, the street you're on, and what the next intersection is and how far.
 
-On Android 14 and later, Treker asks the screen reader to let your swipes go straight through to the map browsing area. If your screen reader doesn't do that, the same moves are in the screen reader's actions menu on the map browsing area: Move forward, Turn around, Turn left, Turn right and Where am I.
+On Android 14 and later, BkindExplorer asks the screen reader to let your swipes go straight through to the map browsing area. If your screen reader doesn't do that, the same moves are in the screen reader's actions menu on the map browsing area: Move forward, Turn around, Turn left, Turn right and Where am I.
 
 Start from my location moves you back to where you really are.
 
@@ -84,7 +84,7 @@ Start from my location moves you back to where you really are.
 
 Type an address or a place name in the single Address or place name field, then press Search, or the search key on the keyboard. A whole address goes in the one field, for example 123 Main Street, Springfield, Illinois. You can also type a business name or a kind of place, like coffee. Results are listed with their distance from you. Each result has the place actions below.
 
-When you start guidance, Treker takes you to the Active route tab, which takes the Explore tab's place at the bottom left until guidance stops. The Routes tab then only has a Go to Active route button above the search.
+When you start guidance, BkindExplorer takes you to the Active route tab, which takes the Explore tab's place at the bottom left until guidance stops. The Routes tab then only has a Go to Active route button above the search.
 
 Below them is the list of steps.
 
@@ -93,7 +93,7 @@ Below them is the list of steps.
 
 While guidance is running, the first tab at the bottom is called Active route instead of Explore. Everything for the route you're following is here, and it updates by itself as you move, so you don't need to leave the tab.
 
-At the top it shows, for example: Motorized guidance. To. Corner Cafe. Then the next instruction, the distance remaining, the distance traveled, and anything Treker is doing, like recalculating.
+At the top it shows, for example: Motorized guidance. To. Corner Cafe. Then the next instruction, the distance remaining, the distance traveled, and anything BkindExplorer is doing, like recalculating.
 
 The buttons are:
 
@@ -107,7 +107,7 @@ The buttons are:
 
 # Place actions
 
-Every place in Treker, whether a search result, a place nearby or a favorite, has the same actions. With a screen reader, they're in the actions menu on the place. You can also double tap the place to show them as buttons.
+Every place in BkindExplorer, whether a search result, a place nearby or a favorite, has the same actions. With a screen reader, they're in the actions menu on the place. You can also double tap the place to show them as buttons.
 
 - Start in pedestrian mode: walking turn-by-turn guidance.
 - Start in motorized mode: driving turn-by-turn guidance, for when you're a passenger or for trips by car.
@@ -117,7 +117,7 @@ Every place in Treker, whether a search result, a place nearby or a favorite, ha
 
 # Guidance
 
-Pedestrian and motorized guidance work offline. When a route starts, Treker says the kind of guidance, where to, and how long the route is, then the first instruction. For example: Motorized guidance. To. Corner Cafe. Route length, 4.2 miles. Head southeast on Emily Morgan Circle. Public transit routes start with Public transit guidance. To. and the destination in the same way.
+Pedestrian and motorized guidance work offline. When a route starts, BkindExplorer says the kind of guidance, where to, and how long the route is, then the first instruction. For example: Motorized guidance. To. Corner Cafe. Route length, 4.2 miles. Head southeast on Emily Morgan Circle. Public transit routes start with Public transit guidance. To. and the destination in the same way.
 
 In a vehicle, each instruction is said:
 
@@ -129,7 +129,7 @@ In a vehicle, each instruction is said:
 
 Walking works the same way, with shorter distances: about 200 feet before, then Get ready to, about 65 feet before, then at the turn, then Continue for and the next instruction once you're round it. Short steps skip the early warnings.
 
-If you leave the route or head the wrong way, Treker says Off route, recalculating, and makes a new route from where you are, in the direction you're already going, like Google Maps or Waze, rather than telling you to turn around. It then says New route, its length and the first instruction.
+If you leave the route or head the wrong way, BkindExplorer says Off route, recalculating, and makes a new route from where you are, in the direction you're already going, like Google Maps or Waze, rather than telling you to turn around. It then says New route, its length and the first instruction.
 
 # Favorites tab
 
@@ -137,21 +137,21 @@ Save my current location saves where you are, named by its street address. Place
 
 # Accuracy
 
-Treker is built so it doesn't tell you something wrong with confidence.
+BkindExplorer is built so it doesn't tell you something wrong with confidence.
 
-- Treker only names streets, intersections, addresses and places when your GPS position is precise to about 30 feet, or the accuracy you choose in Help and settings, under GPS accuracy. When it isn't, Treker waits. If the signal stays weak for 20 seconds, Treker says GPS signal weak; once it's been good again for 15 seconds, GPS signal good again. It says these at most once every 3 minutes, and you can switch them off with Announce when the GPS signal turns weak or good again, in Announcements and verbosity. The Explore tab always shows how accurate your position is.
-- Treker asks your phone for its most precise location mode and also listens to the GPS chip directly. On phones with dual-frequency GPS, such as recent Pixels, that's accurate to a few feet out in the open. Positions are smoothed so one wild fix can't throw you across the street, but the accuracy Treker reports is always the GPS's own.
-- At the end of a walk, Treker doesn't stop at the end of the street. In the last 150 feet it counts down the distance to the destination itself and says which way it is, like Corner Cafe, 40 feet, ahead and slightly to the left. It only says you've arrived when you're within about 30 feet, or the arrival distance you choose, and GPS is precise enough to be sure. If it isn't, Treker says so instead of announcing an arrival it can't stand behind.
-- When Treker starts, it names nothing until GPS has given 5 precise readings in a row, so a rough first position, which can be hundreds of feet off, is never used.
-- A new street is only announced once 3 readings in a row agree on it. Indoors, or wherever GPS is a little rough, up to about 100 feet off, a street is still named if it's clearly the nearest one; if two streets are too close to call, Treker says nothing.
-- To save battery, when you've been still for 2 minutes and aren't being guided or using What's Around, Treker checks your position every 15 seconds at low power. The moment the phone senses you moving, precise GPS comes straight back. While this is happening, the GPS line on the Explore tab says Saving battery while you're still.
-- At a corner, Treker names the street you're walking along, not the cross street that happens to be a little closer.
+- BkindExplorer only names streets, intersections, addresses and places when your GPS position is precise to about 30 feet, or the accuracy you choose in Help and settings, under GPS accuracy. When it isn't, BkindExplorer waits. If the signal stays weak for 20 seconds, BkindExplorer says GPS signal weak; once it's been good again for 15 seconds, GPS signal good again. It says these at most once every 3 minutes, and you can switch them off with Announce when the GPS signal turns weak or good again, in Announcements and verbosity. The Explore tab always shows how accurate your position is.
+- BkindExplorer asks your phone for its most precise location mode and also listens to the GPS chip directly. On phones with dual-frequency GPS, such as recent Pixels, that's accurate to a few feet out in the open. Positions are smoothed so one wild fix can't throw you across the street, but the accuracy BkindExplorer reports is always the GPS's own.
+- At the end of a walk, BkindExplorer doesn't stop at the end of the street. In the last 150 feet it counts down the distance to the destination itself and says which way it is, like Corner Cafe, 40 feet, ahead and slightly to the left. It only says you've arrived when you're within about 30 feet, or the arrival distance you choose, and GPS is precise enough to be sure. If it isn't, BkindExplorer says so instead of announcing an arrival it can't stand behind.
+- When BkindExplorer starts, it names nothing until GPS has given 5 precise readings in a row, so a rough first position, which can be hundreds of feet off, is never used.
+- A new street is only announced once 3 readings in a row agree on it. Indoors, or wherever GPS is a little rough, up to about 100 feet off, a street is still named if it's clearly the nearest one; if two streets are too close to call, BkindExplorer says nothing.
+- To save battery, when you've been still for 2 minutes and aren't being guided or using What's Around, BkindExplorer checks your position every 15 seconds at low power. The moment the phone senses you moving, precise GPS comes straight back. While this is happening, the GPS line on the Explore tab says Saving battery while you're still.
+- At a corner, BkindExplorer names the street you're walking along, not the cross street that happens to be a little closer.
 - A trail or footpath, such as one behind your house, is only named when you're on it; otherwise the street nearby wins.
 - A divided road, with separate lanes each way, is announced as one intersection, not two.
 - Zip codes come from the U.S. Census Bureau's zip code areas, so they're right even where no one has mapped addresses.
-- The nearest street address is taken from the street you're on. Treker uses the real address points counties publish, where there are any, out to about 160 feet from you, so your own house number is still right indoors, when GPS can be 50 feet or more off. A house on the street you're on is chosen over a closer one on the next street, like a neighbor behind your back fence. Where there are no address points, Treker works out your house number from the Census Bureau's house number ranges for your street and which side of it you're on, and says near in front of it, for example near 1303 Emily Morgan Circle.
-- Outside city limits, as in many neighborhoods, Treker gives the city your mail goes to, like Richmond.
-- Every new version of Treker is checked by automatic tests of distances, directions, which street you're on, intersections, turn announcements and noticing when you leave a route. Every map is checked before it's published, so a broken map never reaches your phone.
+- The nearest street address is taken from the street you're on. BkindExplorer uses the real address points counties publish, where there are any, out to about 160 feet from you, so your own house number is still right indoors, when GPS can be 50 feet or more off. A house on the street you're on is chosen over a closer one on the next street, like a neighbor behind your back fence. Where there are no address points, BkindExplorer works out your house number from the Census Bureau's house number ranges for your street and which side of it you're on, and says near in front of it, for example near 1303 Emily Morgan Circle.
+- Outside city limits, as in many neighborhoods, BkindExplorer gives the city your mail goes to, like Richmond.
+- Every new version of BkindExplorer is checked by automatic tests of distances, directions, which street you're on, intersections, turn announcements and noticing when you leave a route. Every map is checked before it's published, so a broken map never reaches your phone.
 
 The map itself is OpenStreetMap, kept up to date by volunteers, so it can still be wrong or out of date in places. When it is, please report it.
 
@@ -166,16 +166,16 @@ You can report a problem from wherever you notice it:
 
 Choose what's wrong from the list, for example a place is missing, a street name is wrong, or a sidewalk or crossing is missing. If you're correcting a name, type the correct name. You can add more detail if you want. Then choose Send report.
 
-Your report becomes a public note on OpenStreetMap at that spot, including what Treker said there, so local volunteer mappers can see exactly what's wrong and fix it. It doesn't include your name. Once it's fixed, the fix reaches Treker with the next monthly map update. If you're offline, or OpenStreetMap doesn't accept the report right away, Treker keeps it and sends it later.
+Your report becomes a public note on OpenStreetMap at that spot, including what BkindExplorer said there, so local volunteer mappers can see exactly what's wrong and fix it. It doesn't include your name. Once it's fixed, the fix reaches BkindExplorer with the next monthly map update. If you're offline, or OpenStreetMap doesn't accept the report right away, BkindExplorer keeps it and sends it later.
 
 # Fixing it on your phone straight away
 
-For some problems you don't have to wait. When you report one of these, Treker offers to fix it on your phone straight away, and that's switched on unless you switch it off:
+For some problems you don't have to wait. When you report one of these, BkindExplorer offers to fix it on your phone straight away, and that's switched on unless you switch it off:
 
-- A place that's closed or gone: Treker stops announcing it.
-- A place with the wrong name: Treker uses the name you typed.
-- A missing place: Treker adds it where you're standing, with the name you typed, and announces it like any other place.
-- A street with the wrong name: Treker uses the name you typed for that street around here.
+- A place that's closed or gone: BkindExplorer stops announcing it.
+- A place with the wrong name: BkindExplorer uses the name you typed.
+- A missing place: BkindExplorer adds it where you're standing, with the name you typed, and announces it like any other place.
+- A street with the wrong name: BkindExplorer uses the name you typed for that street around here.
 
 Your fixes are listed on the Help and settings tab, under Map reports and fixes, each with an Undo button. That section also lists the reports you've sent, each of which opens its OpenStreetMap note so you can see whether it's been fixed, and a button to send any reports still waiting.
 
@@ -189,7 +189,7 @@ At the top are Open user guide in browser and Open release notes in browser. Bel
 
 Inside a group, every setting with several choices has its own button, which says the setting and its current choice, for example Speech engine: Phone's default engine. Pressing it opens the choices, as radio buttons, on their own screen; Navigate up takes you back to the group. On-off switches and sliders, such as Avoid stairs or Speech rate, are right on the group's page.
 
-Speech: Treker's own voice, which speaks live exploration, What's Around and guidance. It's separate from your screen reader's voice.
+Speech: BkindExplorer's own voice, which speaks live exploration, What's Around and guidance. It's separate from your screen reader's voice.
 
 - Speech engine: any speech engine installed on your phone, or the phone's default.
 - Voice: the voices in that engine, in your language. On the Voice screen, switch on Show voices for all languages to see the rest.
@@ -210,17 +210,17 @@ Route settings apply to the next route you start.
 
 GPS accuracy: shows how accurate your position is right now, and has two settings.
 
-- Required GPS accuracy: about 30 feet, which is the default and the most accurate; about 50 feet; or about 80 feet, which works in more places. Between tall buildings, under trees or indoors, GPS often can't reach 30 feet. When it can't, Treker tells you the signal is weak rather than guess.
+- Required GPS accuracy: about 30 feet, which is the default and the most accurate; about 50 feet; or about 80 feet, which works in more places. Between tall buildings, under trees or indoors, GPS often can't reach 30 feet. When it can't, BkindExplorer tells you the signal is weak rather than guess.
 - Say you've arrived when walking within: about 15, 30 or 50 feet.
 
 Units and directions:
 
 - Distances: feet and miles, yards and miles, or meters and kilometers.
-- Directions: ahead, behind, left and right, which is the default, or clock face, like 2 o'clock. Ahead means within about 15 degrees of straight ahead; ahead and slightly to the left or right, up to about 60 degrees; to the left or right, up to about 120 degrees; behind you to the left or right, up to about 165 degrees; and behind you beyond that. Both are relative to the way you're walking. When you've stopped, they're relative to the way the top of your phone points if What's Around is on, otherwise the way you were last walking. If Treker can't tell which way you're facing, it gives the distance without a direction rather than guess. Treker doesn't use compass directions, except that a route's first instruction can say which way to head, like Head southeast on Jane Doe Avenue.
+- Directions: ahead, behind, left and right, which is the default, or clock face, like 2 o'clock. Ahead means within about 15 degrees of straight ahead; ahead and slightly to the left or right, up to about 60 degrees; to the left or right, up to about 120 degrees; behind you to the left or right, up to about 165 degrees; and behind you beyond that. Both are relative to the way you're walking. When you've stopped, they're relative to the way the top of your phone points if What's Around is on, otherwise the way you were last walking. If BkindExplorer can't tell which way you're facing, it gives the distance without a direction rather than guess. BkindExplorer doesn't use compass directions, except that a route's first instruction can say which way to head, like Head southeast on Jane Doe Avenue.
 
 Shake and What's Around: shake for Where am I on or off, how hard to shake (light, medium or firm), vibration, and how far What's Around looks, from 50 to 500 meters.
 
-Offline maps: download, update and delete maps. Maps you've downloaded each have a Delete button. Below them is every map you can download, with the one covering where you are first, and how big it is. A map you already have says either Update, with the date the newer map was built, or that it's up to date. When Treker starts, it checks for newer builds of your maps. On Wi-Fi it updates them by itself and says so; on mobile data it just tells you a newer map is ready. Maps are rebuilt every month with the newest OpenStreetMap data.
+Offline maps: download, update and delete maps. Maps you've downloaded each have a Delete button. Below them is every map you can download, with the one covering where you are first, and how big it is. A map you already have says either Update, with the date the newer map was built, or that it's up to date. When BkindExplorer starts, it checks for newer builds of your maps. On Wi-Fi it updates them by itself and says so; on mobile data it just tells you a newer map is ready. Maps are rebuilt every month with the newest OpenStreetMap data.
 
 Map reports and fixes: described above.
 

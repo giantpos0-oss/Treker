@@ -34,11 +34,11 @@ class ExploreService : LifecycleService() {
         val pause = PendingIntent.getService(this, 2, Intent(this, ExploreService::class.java).setAction(ACTION_PAUSE), PendingIntent.FLAG_IMMUTABLE)
         val n: Notification = NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
-            .setContentTitle("Treker is exploring")
+            .setContentTitle("BkindExplorer is exploring")
             .setContentText("Live exploration is announcing where you are.")
             .setContentIntent(open)
             .addAction(0, "Pause or resume", pause)
-            .addAction(0, "Stop Treker", stop)
+            .addAction(0, "Stop BkindExplorer", stop)
             .setOngoing(true)
             .build()
         runCatching {
@@ -86,7 +86,7 @@ class ExploreService : LifecycleService() {
         return START_STICKY
     }
 
-    /** Closing Treker from the recent apps list stops it completely, the same as Stop Treker. */
+    /** Closing BkindExplorer from the recent apps list stops it completely, the same as Stop BkindExplorer. */
     override fun onTaskRemoved(rootIntent: Intent?) {
         shutDown()
         super.onTaskRemoved(rootIntent)
