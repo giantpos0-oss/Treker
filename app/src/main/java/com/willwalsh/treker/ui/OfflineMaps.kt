@@ -54,7 +54,8 @@ private fun RegionButton(r: RegionInfo, coversYou: Boolean, onDone: () -> Unit) 
     val installed = Regions.isInstalled(r.id)
     val label = when {
         p != null -> "Downloading ${r.name}, ${(p * 100).toInt()} percent"
-        installed -> "Update ${r.name} map, built ${r.built}"
+        installed && Regions.hasUpdate(r) -> "Update ${r.name} map, newer map built ${r.built}"
+        installed -> "${r.name} map is up to date, built ${r.built}. Download again"
         else -> "Download ${r.name} map, ${Regions.sizeWords(r.totalSize)}" + if (coversYou) ", covers where you are" else ""
     }
     BigButton(label, Modifier.padding(vertical = 2.dp)) {

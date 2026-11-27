@@ -76,7 +76,7 @@ object Offline {
         val street = (streetsHere ?: runCatching { r.streetArea(p, 150.0) }.getOrNull())
             ?.nearestStreet(p, course)?.takeIf { it.second < 30 }?.first?.name
         // A mapped house close by wins; otherwise the house number is worked out from the street's ranges.
-        val addr = runCatching { r.nearestAddress(p, maxMeters = 25.0, street = street) }.getOrNull()
+        val addr = runCatching { r.nearestAddress(p, maxMeters = 50.0, street = street) }.getOrNull()
         val est = if (addr == null) runCatching { r.estimateAddress(p, street) }.getOrNull() else null
         val zip = areas["zip"] ?: addr?.third ?: est?.zip
         AreaInfo(

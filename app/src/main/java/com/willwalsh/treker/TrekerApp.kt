@@ -62,5 +62,13 @@ class TrekerApp : Application() {
         com.willwalsh.treker.ui.AppNav.guiding = { guidance.active.value }
         // Reports made without internet go out the next time Treker starts.
         if (Reports.waiting > 0) scope.launch { Reports.sendWaiting() }
+        // Keep the maps current: rebuilt maps fix mistakes and add exact house numbers.
+        scope.launch {
+            val cm = getSystemService(android.net.ConnectivityManager::class.java)
+            val caps = cm?.getNetworkCapabilities(cm.activeNetwork)
+            if (caps?.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_INTERNET) != true) return@launch
+            val unmetered = caps.hasCapability(android.net.NetworkCapabilities.NET_CAPABILITY_NOT_METERED)
+            com.willwalsh.treker.data.Regions.updateInstalled(unmetered) { speaker.say(it) }
+        }
     }
 }

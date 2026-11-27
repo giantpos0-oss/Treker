@@ -62,6 +62,30 @@ object Regions {
     fun tilesFile(id: String) = File(Offline.mapsDir, "$id.tar")
     fun isInstalled(id: String) = dbFile(id).exists() && tilesFile(id).exists()
 
+    /** The build date of the installed map, like 2026-11-26, read from the map itself. */
+    fun installedBuilt(id: String): String? = runCatching {
+        android.database.sqlite.SQLiteDatabase.openDatabase(dbFile(id).path, null, android.database.sqlite.SQLiteDatabase.OPEN_READONLY).use { db ->
+            db.rawQuery("SELECT value FROM meta WHERE key = 'built'", null).use { if (it.moveToFirst()) it.getString(0) else null }
+        }
+    }.getOrNull()
+
+    fun hasUpdate(r: RegionInfo): Boolean = isInstalled(r.id) && (installedBuilt(r.id) ?: "") < r.built
+
+    /**
+     * When Treker starts: any installed map with a newer build is updated by itself on Wi-Fi.
+     * On mobile data, Treker only says an update is ready, since maps are large.
+     */
+    suspend fun updateInstalled(unmetered: Boolean, say: (String) -> Unit) {
+        val newer = runCatching { loadCatalog() }.getOrDefault(emptyList()).filter { hasUpdate(it) }
+        for (r in newer) {
+            if (!unmetered) { say("A newer ${r.name} map is ready. Update it on Wi-Fi, or in Help and settings, Offline maps."); continue }
+            say("Updating the ${r.name} map. You can keep using Treker.")
+            runCatching { download(r) }
+                .onSuccess { say("The ${r.name} map is updated.") }
+                .onFailure { say("The ${r.name} map didn't update. Treker will try again next time it starts.") }
+        }
+    }
+
     /** Downloads and unpacks a region. Throws on failure; partial files are removed. */
     suspend fun download(r: RegionInfo) = withContext(Dispatchers.IO) {
         progress[r.id] = 0f

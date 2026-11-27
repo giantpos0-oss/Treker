@@ -126,7 +126,8 @@ class RegionDb(val file: File) {
         db.rawQuery("SELECT number, street, city, postcode, lat, lon FROM addresses WHERE cell IN (${cellList(p, maxMeters)})", null).use { c ->
             while (c.moveToNext()) {
                 var d = Geo.distance(p, LatLon(c.getDouble(4), c.getDouble(5)))
-                if (street != null && c.getString(1).equals(street, ignoreCase = true)) d -= 20
+                // A house on the street you're on wins over a closer one on the next street, like across a back fence.
+                if (street != null && !tidyStreet(c.getString(1)).equals(street, ignoreCase = true)) d += 25
                 if (d < bestD) {
                     bestD = d
                     best = Triple("${c.getString(0)} ${tidyStreet(c.getString(1))}", c.getString(2)?.ifBlank { null }, c.getString(3)?.ifBlank { null })

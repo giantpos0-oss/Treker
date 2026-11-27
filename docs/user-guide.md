@@ -14,7 +14,7 @@ Next, download the map for your area. Go to the Help and settings tab, find Offl
 
 When Treker starts, it says where you are once, as soon as it knows: your street, address, city, zip code and so on, whatever your announcement switches are set to. After that, the switches decide what's announced as things change.
 
-Live exploration starts straight away and keeps running when the screen is off or you're in another app. While it runs, Android shows a Treker notification with two buttons: Pause or resume, which does the same as Pause at the top of the screen, and Stop Treker, which stops GPS, guidance and live exploration until you open Treker again. Both work from the notification shade without opening Treker.
+Live exploration starts straight away and keeps running when the screen is off or you're in another app. While it runs, Android shows a Treker notification with two buttons: Pause or resume, which does the same as Pause at the top of the screen, and Stop Treker, which stops GPS, guidance and live exploration until you open Treker again. Both work from the notification shade without opening Treker. Closing Treker from your phone's recent apps list stops it completely too, the same as Stop Treker.
 
 # The top of every screen
 
@@ -149,7 +149,7 @@ Treker is built so it doesn't tell you something wrong with confidence.
 - A trail or footpath, such as one behind your house, is only named when you're on it; otherwise the street nearby wins.
 - A divided road, with separate lanes each way, is announced as one intersection, not two.
 - Zip codes come from the U.S. Census Bureau's zip code areas, so they're right even where no one has mapped addresses.
-- The nearest street address is taken from the street you're on. Where the map has no house mapped close by, Treker uses the real address points counties publish where there are any, and otherwise works out your house number from the Census Bureau's house number ranges for your street and which side of it you're on, and says near in front of it, for example near 1303 Emily Morgan Circle.
+- The nearest street address is taken from the street you're on. Treker uses the real address points counties publish, where there are any, out to about 160 feet from you, so your own house number is still right indoors, when GPS can be 50 feet or more off. A house on the street you're on is chosen over a closer one on the next street, like a neighbor behind your back fence. Where there are no address points, Treker works out your house number from the Census Bureau's house number ranges for your street and which side of it you're on, and says near in front of it, for example near 1303 Emily Morgan Circle.
 - Outside city limits, as in many neighborhoods, Treker gives the city your mail goes to, like Richmond.
 - Every new version of Treker is checked by automatic tests of distances, directions, which street you're on, intersections, turn announcements and noticing when you leave a route. Every map is checked before it's published, so a broken map never reaches your phone.
 
@@ -220,7 +220,7 @@ Units and directions:
 
 Shake and What's Around: shake for Where am I on or off, how hard to shake (light, medium or firm), vibration, and how far What's Around looks, from 50 to 500 meters.
 
-Offline maps: download, update and delete maps. Maps you've downloaded each have a Delete button. Below them is every map you can download, with the one covering where you are first, and how big it is. A map you already have says Update instead, with the date it was built; updating gets the newest OpenStreetMap data.
+Offline maps: download, update and delete maps. Maps you've downloaded each have a Delete button. Below them is every map you can download, with the one covering where you are first, and how big it is. A map you already have says either Update, with the date the newer map was built, or that it's up to date. When Treker starts, it checks for newer builds of your maps. On Wi-Fi it updates them by itself and says so; on mobile data it just tells you a newer map is ready. Maps are rebuilt every month with the newest OpenStreetMap data.
 
 Map reports and fixes: described above.
 

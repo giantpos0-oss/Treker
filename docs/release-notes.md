@@ -1,5 +1,11 @@
 # Treker release notes
 
+## Version 0.1.11
+
+- Fixed: closing Treker from the recent apps list now stops it completely, the same as Stop Treker in the notification. It still keeps running when the screen is off or you switch to another app.
+- Your exact house number indoors: Treker now uses a real address point out to about 160 feet away, preferring houses on the street you're on, so GPS drifting indoors no longer turns 1303 into 1301.
+- Maps update themselves: when Treker starts, it checks for newer builds of your maps. On Wi-Fi it downloads them by itself and tells you; on mobile data it tells you one is ready. Offline maps now says whether each map is up to date.
+
 ## Version 0.1.10
 
 - Fixed: exact house numbers from the new address points were sometimes in capitals, like EMILY MORGAN Circle, which a screen reader could spell out. They're now said normally: 1303 Emily Morgan Circle. The Texas map now has these address points; update it in Offline maps to get your exact house number.

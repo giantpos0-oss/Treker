@@ -82,15 +82,24 @@ class ExploreService : LifecycleService() {
         when (intent?.action) {
             ACTION_PAUSE -> { app.togglePause(); return START_STICKY }
         }
-        if (intent?.action == ACTION_STOP) {
-            app.whatsAround.stop()
-            app.guidance.stop(silent = true)
-            app.speaker.stop()
-            app.location.stop()
-            stopSelf()
-            return START_NOT_STICKY
-        }
+        if (intent?.action == ACTION_STOP) { shutDown(); return START_NOT_STICKY }
         return START_STICKY
+    }
+
+    /** Closing Treker from the recent apps list stops it completely, the same as Stop Treker. */
+    override fun onTaskRemoved(rootIntent: Intent?) {
+        shutDown()
+        super.onTaskRemoved(rootIntent)
+    }
+
+    private fun shutDown() {
+        val app = application as TrekerApp
+        app.whatsAround.stop()
+        app.guidance.stop(silent = true)
+        app.speaker.stop()
+        app.location.stop()
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+        stopSelf()
     }
 
     private var shake: ShakeDetector? = null
